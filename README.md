@@ -10,7 +10,7 @@ repo show how plugins can be written in:
 * Java
 * AssemblyScript
 
-**Done:**
+**Done:**  
 [x] Basic plugin interface that can load and execute functions in Wasm modules  
 [x] Call Go functions from Wasm modules   
 [x] Receive and send int32, float32, and string types to the Wasm modules  
