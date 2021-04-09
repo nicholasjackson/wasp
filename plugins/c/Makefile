@@ -1,0 +1,2 @@
+build:
+	emcc ./main.c
