@@ -1,6 +1,8 @@
 # Web Assembly System Plugins (Wasp)
 
  `Wasp` is a plugin system that leverages Web Assembly (Wasm) modules for Go. Wasp allows you to extend your applictaions by allowing dynamically loaded plugins that can be authored in any language that can compile to the Wasm format. Due to the limitations and sandboxed nature of Wasm not every capability of a language, as it was originally designed to run in the browser. For example it does not natively support the ability to make network connections via sockets, read and write files, etc. Support for these features is currently being worked on as part of the Wasi standard [https://hacks.mozilla.org/2019/03/standardizing-wasi-a-webassembly-system-interface/](https://hacks.mozilla.org/2019/03/standardizing-wasi-a-webassembly-system-interface/https://hacks.mozilla.org/2019/03/standardizing-wasi-a-webassembly-system-interface), however until this standard is widely adopted capability across languages may vary.
+
+To load and execute WebAssembly modules, Wasp uses the OSS [Wasmer](https://wasmer.io/) library.
  
 In addition Wasm does not have the rich type system that Go has, currently Wasm only supports the types `int32, int64, float32, float64`. This means that any functions that are exposed by a Wasm module can only contain these types for data interchange. For example, the following Go function could be compiled to Wasm using TinyGo or the experimental Go Wasm target and could be called successfully by the interpreter.
 
