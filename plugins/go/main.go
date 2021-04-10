@@ -6,10 +6,12 @@ package main
 import "C"
 import "unsafe"
 
+type WasmString uintptr
+
 // Create a C string from the Go string and return a pointer to the
 // memory location where this is stored in the modules linear memory
 // C.CString is not available in tiny go
-func cstring(s string) uintptr {
+func cstring(s string) WasmString {
 	size := int32(len(s)) + 1 // add one byte for the null terminator
 	uptr := allocate(size)
 	ptr := unsafe.Pointer(uptr)
@@ -18,16 +20,16 @@ func cstring(s string) uintptr {
 	copy(buf, s)
 	buf[len(s)] = 0
 
-	return uptr
+	return WasmString(uptr)
 }
 
 // Convert a C string to a Go string
 // C.GoString is not available in tiny go
-func gostring(ptr uintptr) string {
+func gostring(ptr WasmString) string {
 	cstr := (*C.char)(unsafe.Pointer(ptr))
 	slen := int(C.strlen(cstr))
 	sbuf := make([]byte, slen)
-	copy(sbuf, (*[1 << 28]byte)(unsafe.Pointer(s))[:slen:slen])
+	copy(sbuf, (*[1 << 28]byte)(unsafe.Pointer(ptr))[:slen:slen])
 	return string(sbuf)
 }
 
@@ -55,8 +57,8 @@ func sum(a, b int) int {
 }
 
 //go:export hello
-func hello(in uintptr) uintptr {
-	// get the string from memory pointer
+func hello(in WasmString) WasmString {
+	// get the string from the memory pointer
 	s := gostring(in)
 
 	return cstring("Hello " + s)

@@ -21,12 +21,13 @@ func hello(name string) string {
 }
 ```
 
-To work round this limitation pointers can be used as shown in the rewritten example below.
+To work round this limitation pointers can be used as shown in the rewritten example below. `WasmString` is not actually a Go `string` but an alias for a pointer to the 
+location of a C string that is converted to a Go string with the helper function `gostring`, and exported using the `cstring` function.
 
 ```go
 //go:export hello
-func hello(in uintptr) uintptr {
-	// get the string from memory pointer
+func hello(in WasmString) WasmString {
+	// get the string from the memory pointer
 	s := gostring(in)
 
 	return cstring("Hello " + s)
