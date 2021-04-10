@@ -6,13 +6,8 @@ package main
 import "C"
 import "unsafe"
 
-// allocate memory that can be written to
-//go:export allocate
-func allocate(size int32) uintptr {
-	ptr := C.malloc(C.size_t(size))
-	return uintptr(ptr)
-}
-
+// Create a C string from the Go string and return a pointer to the
+// memory location where this is stored in the modules linear memory
 // C.CString is not available in tiny go
 func cstring(s string) uintptr {
 	size := int32(len(s)) + 1 // add one byte for the null terminator
@@ -26,14 +21,25 @@ func cstring(s string) uintptr {
 	return uptr
 }
 
+// Convert a C string to a Go string
 // C.GoString is not available in tiny go
-func gostring(s *C.char) string {
-	slen := int(C.strlen(s))
+func gostring(ptr uintptr) string {
+	cstr := (*C.char)(unsafe.Pointer(ptr))
+	slen := int(C.strlen(cstr))
 	sbuf := make([]byte, slen)
 	copy(sbuf, (*[1 << 28]byte)(unsafe.Pointer(s))[:slen:slen])
 	return string(sbuf)
 }
 
+// allocate memory that can be written to by the Wasm host
+// returns a pointer to this location in the modules linear memory.
+//go:export allocate
+func allocate(size int32) uintptr {
+	ptr := C.malloc(C.size_t(size))
+	return uintptr(ptr)
+}
+
+// enables the host to determine the size of a string
 //go:export get_string_size
 func getStringSize(a uintptr) int {
 	char := (*C.char)(unsafe.Pointer(uintptr(a)))
@@ -51,7 +57,7 @@ func sum(a, b int) int {
 //go:export hello
 func hello(in uintptr) uintptr {
 	// get the string from memory pointer
-	s := gostring((*C.char)(unsafe.Pointer(in)))
+	s := gostring(in)
 
 	return cstring("Hello " + s)
 }
