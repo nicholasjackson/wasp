@@ -45,4 +45,13 @@ func main() {
 		os.Exit(1)
 	}
 	log.Info("Response from function", "name", "hello", "result", outStr)
+
+	// test calling bytes
+	var outData []byte
+	err = e.CallFunction("data", &outData, []byte{1, 2, 3})
+	if err != nil {
+		log.Error("Error calling function", "name", "data", "error", err)
+		os.Exit(1)
+	}
+	log.Info("Response from function", "name", "data", "result", outData)
 }

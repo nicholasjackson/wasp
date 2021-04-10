@@ -81,6 +81,15 @@ func (w *Wasm) CallFunction(name string, outputParam interface{}, inputParams ..
 			}
 			processedParams[i] = addr
 
+		case []byte:
+			// we have a byte slice parameter, copy this into the Wasm modules
+			// memory and replace with the address for the copied structure
+			addr, err := w.setBytesInMemory(p.([]byte))
+			if err != nil {
+				return err
+			}
+			processedParams[i] = addr
+
 		default:
 			processedParams[i] = p
 		}
@@ -113,6 +122,14 @@ func (w *Wasm) CallFunction(name string, outputParam interface{}, inputParams ..
 
 		*outputParam.(*string) = s
 
+	case *[]byte:
+		data, err := w.getBytesFromMemory(resp.(int32))
+		if err != nil {
+			return err
+		}
+
+		*outputParam.(*[]byte) = data
+
 	case *int32:
 		*outputParam.(*int32) = resp.(int32)
 	default:
@@ -122,6 +139,12 @@ func (w *Wasm) CallFunction(name string, outputParam interface{}, inputParams ..
 	return nil
 }
 
+// setStringInMemory copies a Go string to the Wasm modules linear memory
+// it first allocates the memory by calling the modules helper function
+// allocate and then copies the string.
+//
+// Note: Strings are copied as a null terminating string to give compatibility with
+// C strings.
 func (w *Wasm) setStringInMemory(s string) (int32, error) {
 	size := len(s) + 1 // allocate 1 more byte than the string size for the null terminator
 	addr, err := w.instanceFunctions.Allocate(int32(size))
@@ -165,4 +188,57 @@ func (w *Wasm) getStringFromMemory(addr int32) (string, error) {
 	w.log.Debug("Got string from memory", "addr", addr, "result", s)
 
 	return s, nil
+}
+
+// setBytesInMemory copies the byte slice to the Wasm modules
+// memory and returns the address of the data
+// The function first allocates memory in the destination Wasm module
+// by calling the modules allocate function copying the data.
+//
+// Note: The array created in the destination Wasm module always has the
+// length of the array stored at the first index.
+func (w *Wasm) setBytesInMemory(data []byte) (int32, error) {
+	size := len(data) + 1 // allocate 1 more byte than the byte size as the size is encoded into the first index
+	addr, err := w.instanceFunctions.Allocate(int32(size))
+	if err != nil {
+		return 0, err
+	}
+
+	w.log.Debug("Allocated memory in host", "size", size, "addr", addr)
+
+	m, err := w.instance.Exports.GetMemory("memory")
+	if err != nil {
+		panic(err)
+	}
+
+	// add the length to the first index
+	m.Data()[int(addr)] = byte(len(data))
+
+	// copy the data
+	for i, b := range data {
+		m.Data()[int(addr)+i+1] = b
+	}
+
+	// return the address of the new array
+	return addr, nil
+}
+
+// getBytesFromMemory copies an array from the Wasm modules memory
+// into a Go byte slice. The array stored in the Wasm modules memory
+// must have the length of the array encoded into the first byte.
+func (w *Wasm) getBytesFromMemory(addr int32) ([]byte, error) {
+	m, err := w.instance.Exports.GetMemory("memory")
+	if err != nil {
+		panic(err)
+	}
+
+	//get the size of the data from the first index
+	byteLen := int32(m.Data()[addr])
+
+	// copy the data
+	data := m.Data()[addr+1 : addr+1+byteLen]
+
+	w.log.Debug("Got string from memory", "addr", addr, "size", byteLen, "result", data)
+
+	return data, nil
 }

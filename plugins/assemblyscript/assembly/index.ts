@@ -15,3 +15,21 @@ export function hello(name: ArrayBuffer): ArrayBuffer {
 
   return String.UTF8.encode("Hello " + inParam, true)
 }
+
+export function data(inRaw: ArrayBuffer) : ArrayBuffer {
+  let inData = Int8Array.wrap(inRaw)
+  let outRaw = new ArrayBuffer(4);
+  let outData = Int8Array.wrap(outRaw)
+
+  outData[0] = 3; // size of the array
+
+  // read the inData and reverse
+  // length is always position 1
+  var pos = 1;
+  for (let i = inData[0]; i > 0; --i) {
+    outData[pos] = inData[i];
+    pos++
+  }
+
+  return outRaw;
+}
