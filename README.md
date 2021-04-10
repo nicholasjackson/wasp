@@ -114,8 +114,9 @@ ok      github.com/nicholasjackson/go-wasm-plugins/engine       4.737s
 [x] Receive and send int32, float32, and string types to the Wasm modules  
 
 **Todo:**  
-[ ] Receive and send slices of bytes []byte  
+[x] Receive and send slices of bytes []byte  
 [ ] Ability to define custom ABIs for plugins, currently this is hard coded  
 [ ] Tests, lots and lots of tests  
 [ ] Support Wasi standard
 [ ] Define more robust helper packages for managing complex types
+[ ] Check for memory leaks
