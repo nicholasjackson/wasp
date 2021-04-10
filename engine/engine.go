@@ -238,7 +238,7 @@ func (w *Wasm) getBytesFromMemory(addr int32) ([]byte, error) {
 	// copy the data
 	data := m.Data()[addr+1 : addr+1+byteLen]
 
-	w.log.Debug("Got string from memory", "addr", addr, "size", byteLen, "result", data)
+	w.log.Debug("Got bytes from memory", "addr", addr, "size", byteLen, "result", data)
 
 	return data, nil
 }

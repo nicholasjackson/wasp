@@ -48,10 +48,10 @@ func main() {
 
 	// test calling bytes
 	var outData []byte
-	err = e.CallFunction("data", &outData, []byte{1, 2, 3})
+	err = e.CallFunction("reverse", &outData, []byte{1, 2, 3})
 	if err != nil {
-		log.Error("Error calling function", "name", "data", "error", err)
+		log.Error("Error calling function", "name", "reverse", "error", err)
 		os.Exit(1)
 	}
-	log.Info("Response from function", "name", "data", "result", outData)
+	log.Info("Response from function", "name", "reverse", "result", outData)
 }

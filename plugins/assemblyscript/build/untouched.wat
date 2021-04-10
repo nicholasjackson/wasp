@@ -60,7 +60,7 @@
  (export "memory" (memory $0))
  (export "get_string_size" (func $export:assembly/index/get_string_size))
  (export "hello" (func $export:assembly/index/hello))
- (export "data" (func $export:assembly/index/data))
+ (export "reverse" (func $export:assembly/index/reverse))
  (start $~start)
  (func $~lib/rt/itcms/initLazy (param $0 i32) (result i32)
   local.get $0
@@ -2954,7 +2954,7 @@
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $export:assembly/index/data (param $0 i32) (result i32)
+ (func $export:assembly/index/reverse (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)

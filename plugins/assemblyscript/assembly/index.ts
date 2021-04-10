@@ -16,7 +16,7 @@ export function hello(name: ArrayBuffer): ArrayBuffer {
   return String.UTF8.encode("Hello " + inParam, true)
 }
 
-export function data(inRaw: ArrayBuffer) : ArrayBuffer {
+export function reverse(inRaw: ArrayBuffer) : ArrayBuffer {
   let inData = Int8Array.wrap(inRaw)
   let outRaw = new ArrayBuffer(4);
   let outData = Int8Array.wrap(outRaw)

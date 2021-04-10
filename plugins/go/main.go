@@ -89,8 +89,8 @@ func hello(in WasmString) WasmString {
 	return out
 }
 
-//go:export data
-func data(inRaw WasmBytes) WasmBytes {
+//go:export reverse
+func reverse(inRaw WasmBytes) WasmBytes {
 	inData := inRaw.GetBytes()
 	outData := []byte{}
 
