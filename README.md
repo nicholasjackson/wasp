@@ -27,7 +27,7 @@ To work round this limitation pointers can be used as shown in the rewritten exa
 //go:export hello
 func hello(in uintptr) uintptr {
 	// get the string from memory pointer
-	s := gostring((*C.char)(unsafe.Pointer(in)))
+	s := gostring(in)
 
 	return cstring("Hello " + s)
 }
