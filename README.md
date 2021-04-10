@@ -57,32 +57,32 @@ Current examples in the repo show how plugins can be written in:
 The following example shows how Wasp can be used to call the method `hello` that was exported from a Wasm module. First you create an instance of the engine and load the plugin.
 
 ```go
- // Create a logger
-	log := hclog.Default()
-	log = log.Named("main")
+// Create a logger
+log := hclog.Default()
+log = log.Named("main")
 
- // Create the plugin engine 
-	e := engine.New(log.Named("engine"))
+// Create the plugin engine 
+e := engine.New(log.Named("engine"))
  
- // Load and compile the wasm module
-	err := e.LoadPlugin("./plugins/go/module.wasm")
-	if err != nil {
-		log.Error("Error loading plugin", "error", err)
-		os.Exit(1)
-	}
+// Load and compile the wasm module
+err := e.LoadPlugin("./plugins/go/module.wasm")
+if err != nil {
+	log.Error("Error loading plugin", "error", err)
+	os.Exit(1)
+}
 ```
 
 Then you can use the `CallFunction` method on the engine to call the `hello` function exported from the Wasm module, Wasp automatically converts Go types into the simple types understood by the Wasm module. In the following example Wasp would take the input string "hello", allocate the required memory inside the Wasm module, copy the string data to this memory before calling the destination function with a pointer to this string. Responses work exactly the same way in reverse. 
 
 ```go
-	// Call the function hello that is exported by the module
-	var outString string
-	err = e.CallFunction("hello", &outString, 3, 2)
-	if err != nil {
-		log.Error("Error calling function", "name", "hello", "error", err)
-		os.Exit(1)
-	}
-	log.Info("Response from function", "name", "hello", "result", outString)
+// Call the function hello that is exported by the module
+var outString string
+err = e.CallFunction("hello", &outString, 3, 2)
+if err != nil {
+	log.Error("Error calling function", "name", "hello", "error", err)
+	os.Exit(1)
+}
+log.Info("Response from function", "name", "hello", "result", outString)
 ```
 
 ## Features:
