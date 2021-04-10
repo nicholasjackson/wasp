@@ -9,17 +9,17 @@ import (
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
-type WASM struct {
+type Wasm struct {
 	log               hclog.Logger
 	instance          *wasmer.Instance
 	instanceFunctions *instanceFunctions
 }
 
-func New(log hclog.Logger) *WASM {
-	return &WASM{log: log}
+func New(log hclog.Logger) *Wasm {
+	return &Wasm{log: log}
 }
 
-func (w *WASM) LoadPlugin(path string) error {
+func (w *Wasm) LoadPlugin(path string) error {
 	wasmBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("Unable to load WASM module, error: %s", err)
@@ -61,7 +61,7 @@ func (w *WASM) LoadPlugin(path string) error {
 // by outputParam. In the instance that outputParam is a complex type that is returned
 // as a pointer from the WASMFunction CallFunction reads the WasmModule memory and
 // sets outputParam
-func (w *WASM) CallFunction(name string, outputParam interface{}, inputParams ...interface{}) error {
+func (w *Wasm) CallFunction(name string, outputParam interface{}, inputParams ...interface{}) error {
 	f, err := w.instance.Exports.GetFunction(name)
 	if err != nil {
 		return fmt.Errorf("Unable to export the WASM function, error: %s", err)
@@ -122,7 +122,7 @@ func (w *WASM) CallFunction(name string, outputParam interface{}, inputParams ..
 	return nil
 }
 
-func (w *WASM) setStringInMemory(s string) (int32, error) {
+func (w *Wasm) setStringInMemory(s string) (int32, error) {
 	size := len(s) + 1 // allocate 1 more byte than the string size for the null terminator
 	addr, err := w.instanceFunctions.Allocate(int32(size))
 	if err != nil {
@@ -147,31 +147,9 @@ func (w *WASM) setStringInMemory(s string) (int32, error) {
 	return addr, nil
 }
 
-//	m, err := w.instance.Exports.GetMemory("memory")
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	// copy the string into memory
-//	//f, err := w.instance.Exports.GetFunction("allocate")
-//	//if err != nil {
-//	//	panic(err)
-//	//}
-//
-//	//// allocate the memory
-//	//inPtr, err := f(len(s))
-//	//if err != nil {
-//	//	panic(err)
-//	//}
-//
-//	//w.instance.Exports.GetMemory()
-//
-//	return 0
-//}
-
 // getStringFromMemory returns a the string stored at the Wasm modules
 // memory address addr
-func (w *WASM) getStringFromMemory(addr int32) (string, error) {
+func (w *Wasm) getStringFromMemory(addr int32) (string, error) {
 	m, err := w.instance.Exports.GetMemory("memory")
 	if err != nil {
 		panic(err)

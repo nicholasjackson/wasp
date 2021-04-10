@@ -1,12 +1,14 @@
 package engine
 
+// instanceFunctions are functions that must be exported in the destination
+// Wasm module to satisfy Wasps ABI
 type instanceFunctions struct {
 	getStringSize func(...interface{}) (interface{}, error)
 	allocate      func(...interface{}) (interface{}, error)
 	deallocate    func(int32) (int32, error)
 }
 
-func NewInstanceFunctions(w *WASM) (*instanceFunctions, error) {
+func NewInstanceFunctions(w *Wasm) (*instanceFunctions, error) {
 	i := &instanceFunctions{}
 
 	//get the size of the string

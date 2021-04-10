@@ -86,6 +86,25 @@ if err != nil {
 log.Info("Response from function", "name", "hello", "result", outString)
 ```
 
+## Benchmarks:
+
+Calling functions in Wasm modules will never be as fast as native Go functions as the Wasm function is running in a virtual environment. However the intention of Wasp is that it does not replace every function in your application but allows extension points. The following benchmarks only show a simple string calculation where most of the performance is lost through executing the plugin not the speed of the code executing in the plugin. For example, if this function was called in the context of a HTTP handler that makes a database query, adding 3000 nano seconds to a call that original took 200 milliseconds would only add 0.003 milliseconds to the total response. Wasm will always be slower than native code execution however depending on the context this may be an irrelivant and all benchmarks should be taken with a pinch of salt.
+
+```shell
+➜ go test -bench=. ./...
+?       github.com/nicholasjackson/go-wasm-plugins      [no test files]
+goos: linux
+goarch: amd64
+pkg: github.com/nicholasjackson/go-wasm-plugins/engine
+cpu: AMD Ryzen 9 3950X 16-Core Processor            
+BenchmarkSumGoWASM-32                     402475              3003 ns/op
+BenchmarkSumRustWASM-32                   336662              3048 ns/op
+BenchmarkSumTypeScriptWASM-32             363423              3068 ns/op
+BenchmarkSumNative-32                   1000000000               0.2330 ns/op
+PASS
+ok      github.com/nicholasjackson/go-wasm-plugins/engine       4.737s
+```
+
 ## Features:
 **Done:**  
 [x] Basic plugin interface that can load and execute functions in Wasm modules  
