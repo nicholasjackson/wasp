@@ -101,6 +101,67 @@ if err != nil {
 log.Info("Response from function", "name", "reverse", "result", outData)
 ```
 
+## Callbacks
+
+Callbacks can be defined that allow a local function to be called from the Wasm module. For example, if your application contains the Go function:
+
+```go
+func callMe(in string) string {
+	out := fmt.Sprintf("Hello %s", in)
+	fmt.Println(out)
+
+	return out
+}
+```
+
+This can called by the Wasm module by defining an external import. The following example shows how to define an external function that is imported
+by the module. All functions exported from Wasp are placed into the `plugin` namespace, you use the annotation `//go:wasm-module [namespace]` to
+state which namespace the imported function is in. The annotation `//export [function_name]` defines the name of the function, you can then define
+the function signature.
+
+```go
+//go:wasm-module plugin
+//export call_me
+func callMe(in WasmString) WasmString
+```
+
+To use an imported function you call it as you would any other function from your code. In the following example when the callback function is called by
+Wasp, the wasm module calls the imported function `call_me` that appends the string passed to the function to `Hello `. This is then returned
+back to Wasp.
+
+```go
+//go:export callback
+func callback() WasmString {
+	// get the string from the memory pointer
+	name := WasmString(0)
+	name.Copy("Nic")
+
+	s := callMe(name)
+	//s := WasmString(0)
+	//s.Copy("Hello")
+
+	return s // WasmString(0)
+}
+
+```
+
+To use callbacks they must first be registered, registration is done by calling the `AddCallback` method, this takes two parameters, the name of the
+function that it will be available to the Wasm module, and a Go function. Wasp uses reflection to automatically manage the function parameters, it also
+automatically converts any string or []byte types into pointers that the Wasm module can decode.
+
+```go
+// add a function that can be called by the Wasm module
+e.AddCallback("call_me", callMe)
+```
+
+```
+2021-04-12T17:44:41.957+0100 [DEBUG] main.engine: Called callback function: out=["Hello Nic"]
+2021-04-12T17:44:41.957+0100 [DEBUG] main.engine: Allocated memory in host: size=10 addr=131168
+2021-04-12T17:44:41.957+0100 [DEBUG] main.engine: Called function: name=callback outputParam=0xc00009c500 inputParam=[] response=131168 time taken=160µs
+2021-04-12T17:44:41.957+0100 [DEBUG] main.engine: Got string from memory: addr=131168 result="Hello Nic"
+2021-04-12T17:44:41.957+0100 [INFO]  main: Response from function: name=callback result="Hello Nic"
+```
+
 ## Benchmarks:
 
 Calling functions in Wasm modules will never be as fast as native Go functions as the Wasm function is running in a virtual environment. However the intention of Wasp is that it does not replace every function in your application but allows extension points. The following benchmarks only show a simple string calculation where most of the performance is lost through executing the plugin not the speed of the code executing in the plugin. For example, if this function was called in the context of a HTTP handler that makes a database query, adding 3000 nano seconds to a call that original took 200 milliseconds would only add 0.003 milliseconds to the total response. Wasm will always be slower than native code execution however depending on the context this may be an irrelivant and all benchmarks should be taken with a pinch of salt.

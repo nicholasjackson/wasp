@@ -1,3 +1,5 @@
+import { call_me } from "./plugins";
+
 function bytes_from_buffer(raw: ArrayBuffer): Int8Array {
   // the length of the data is stored in the buffer in the first 4 bytes we can discard this
   return Int8Array.wrap(raw.slice(4));
@@ -42,4 +44,10 @@ export function reverse(inRaw: ArrayBuffer) : ArrayBuffer {
   let outData = inData.reverse();
 
   return buffer_from_bytes(outData);
+}
+
+export function callback(): ArrayBuffer {
+  let inParam = call_me(String.UTF8.encode("Nic"));
+
+  return inParam;
 }
