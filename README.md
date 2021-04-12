@@ -30,9 +30,13 @@ location of a C string that is converted to a Go string with the helper function
 //go:export hello
 func hello(in WasmString) WasmString {
 	// get the string from the memory pointer
-	s := gostring(in)
+	s := in.String()
 
-	return cstring("Hello " + s)
+	// Create a new empty WasmString
+	out := WasmString(0)
+	out.Copy("Hello " + s)
+
+	return out
 }
 ```
 
@@ -86,6 +90,15 @@ if err != nil {
 	os.Exit(1)
 }
 log.Info("Response from function", "name", "hello", "result", outString)
+
+// Call the reverse function exported by the module
+var outData []byte
+err = e.CallFunction("reverse", &outData, []byte{1, 2, 3})
+if err != nil {
+	log.Error("Error calling function", "name", "reverse", "error", err)
+	os.Exit(1)
+}
+log.Info("Response from function", "name", "reverse", "result", outData)
 ```
 
 ## Benchmarks:
