@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"time"
@@ -12,6 +13,7 @@ import (
 type Wasm struct {
 	log               hclog.Logger
 	instance          *wasmer.Instance
+	store             *wasmer.Store
 	instanceFunctions *instanceFunctions
 }
 
@@ -26,14 +28,15 @@ func (w *Wasm) LoadPlugin(path string) error {
 	}
 
 	engine := wasmer.NewEngine()
-	store := wasmer.NewStore(engine)
+	w.store = wasmer.NewStore(engine)
 
 	// Add the default imports
 	importObject := wasmer.NewImportObject()
-	addDefaults(importObject, store)
+	addDefaults(importObject, w.store)
+	w.addWasi(importObject)
 
 	// Compile the module
-	module, err := wasmer.NewModule(store, wasmBytes)
+	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
 		return fmt.Errorf("Unable to instantiate WASM module, error: %s", err)
 	}
@@ -196,9 +199,9 @@ func (w *Wasm) getStringFromMemory(addr int32) (string, error) {
 // by calling the modules allocate function copying the data.
 //
 // Note: The array created in the destination Wasm module always has the
-// length of the array stored at the first index.
+// length of the array stored at the first 4 bytes as a uint32
 func (w *Wasm) setBytesInMemory(data []byte) (int32, error) {
-	size := len(data) + 1 // allocate 1 more byte than the byte size as the size is encoded into the first index
+	size := len(data) + 4 // allocate 4 more bytes than the byte size as the size is encoded as a uint32 at the begining of the structure
 	addr, err := w.instanceFunctions.Allocate(int32(size))
 	if err != nil {
 		return 0, err
@@ -211,13 +214,11 @@ func (w *Wasm) setBytesInMemory(data []byte) (int32, error) {
 		panic(err)
 	}
 
-	// add the length to the first index
-	m.Data()[int(addr)] = byte(len(data))
+	// add the length as a uint32 to the first 4 bytes
+	binary.LittleEndian.PutUint32(m.Data()[int(addr):], uint32(len(data)))
 
 	// copy the data
-	for i, b := range data {
-		m.Data()[int(addr)+i+1] = b
-	}
+	copy(m.Data()[int(addr)+4:], data)
 
 	// return the address of the new array
 	return addr, nil
@@ -225,18 +226,21 @@ func (w *Wasm) setBytesInMemory(data []byte) (int32, error) {
 
 // getBytesFromMemory copies an array from the Wasm modules memory
 // into a Go byte slice. The array stored in the Wasm modules memory
-// must have the length of the array encoded into the first byte.
+// must have the length of the array encoded into the first 4 bytes
+// encoded as a little endian uint32.
 func (w *Wasm) getBytesFromMemory(addr int32) ([]byte, error) {
 	m, err := w.instance.Exports.GetMemory("memory")
 	if err != nil {
 		panic(err)
 	}
 
-	//get the size of the data from the first index
-	byteLen := int32(m.Data()[addr])
+	//get the size of the data from the first 4 bytes
+	byteLen := binary.LittleEndian.Uint32(m.Data()[addr:])
+	fmt.Println(m.Data()[addr : addr+7])
 
 	// copy the data
-	data := m.Data()[addr+1 : addr+1+byteLen]
+	data := make([]byte, byteLen)
+	copy(data, m.Data()[addr+4:uint32(addr)+4+byteLen])
 
 	w.log.Debug("Got bytes from memory", "addr", addr, "size", byteLen, "result", data)
 

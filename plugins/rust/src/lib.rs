@@ -1,7 +1,40 @@
 use std::ffi::{CStr, CString};
 use std::mem;
-use std::ptr;
 use std::os::raw::{c_char, c_void};
+
+#[no_mangle]
+fn bytes_from_ptr(raw: *mut c_void) -> Vec<u8> {
+  unsafe {
+    let data = raw as *mut u8;
+    // get the length of the original vector
+    let len_vec: Vec<u8> = Vec::from_raw_parts(data, 4, 4);
+    let mut len_array:[u8; 4] = [0; 4];
+
+    for i in 0..4 {
+      len_array[i] = len_vec[i];
+    }
+
+    let len = u32::from_le_bytes(len_array) as usize;
+    let mut original: Vec<u8> = Vec::from_raw_parts(data,len+4,len+4);
+
+    return original.split_off(4);
+  }
+}
+
+fn ptr_from_bytes(data: Vec<u8>) -> *mut c_void {
+  let len = data.len() as u32; // cast len to u32 should never exceed this size
+  let len_bytes = len.to_le_bytes();
+
+  // add the length to the beginning of the buffer
+  let mut buffer:Vec<u8> = data.clone();
+  buffer.splice(0..0, len_bytes.iter().cloned());
+
+  // get a pointer for the buffer and stop rust from managing the memory
+  let pointer = buffer.as_mut_ptr();
+  mem::forget(buffer);
+    
+  pointer as *mut c_void
+}
 
 #[no_mangle]
 pub extern fn allocate(size: usize) -> *mut c_void {
@@ -46,28 +79,9 @@ pub extern fn hello(raw: *mut c_char) -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern fn reverse(raw: *mut u8) -> *mut c_void {
-  unsafe {
-    // get the length of the original vector
-    let len = ptr::read(raw) as usize;
-    let mut buffer: Vec<u8> = Vec::new();
-    let original: Vec<u8> = Vec::from_raw_parts(raw,len+1,len+1);
-    
-    // set the size of the new buffer to the same as the old
-    buffer.push(len as u8);
-    //std::println!("len {}", original[0]);
-
-    // reverse the array
-    for b in (1..len+1).rev() {
-      //std::println!("out {}", original[b]);
-      buffer.push(original[b]);
-    }
-  
-    let pointer = buffer.as_mut_ptr();
-    mem::forget(buffer);
-
-    return pointer as *mut c_void
-  }
+pub extern fn reverse(raw: *mut c_void) -> *mut c_void {
+  let data_in = bytes_from_ptr(raw);
+  return ptr_from_bytes(data_in.into_iter().rev().collect());
 }
 
 #[cfg(test)]
@@ -77,8 +91,7 @@ fn it_works() {
   buffer.push(1);
   buffer.push(42);
 
-  let pointer = buffer.as_mut_ptr();
-  mem::forget(buffer);
+  let pointer = ptr_from_bytes(buffer);
 
   reverse(pointer);
 }
