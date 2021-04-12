@@ -6,27 +6,11 @@ package main
 import "C"
 import (
 	"encoding/binary"
-	"fmt"
 	"unsafe"
 )
 
 type WasmString uintptr
 type WasmBytes uintptr
-
-// allocate memory that can be written to by the Wasm host
-// returns a pointer to this location in the modules linear memory.
-//go:export allocate
-func allocate(size int32) uintptr {
-	ptr := C.malloc(C.size_t(size))
-	return uintptr(ptr)
-}
-
-// enables the host to determine the size of a string
-//go:export get_string_size
-func getStringSize(a uintptr) int {
-	char := (*C.char)(unsafe.Pointer(uintptr(a)))
-	return int(C.strlen(char))
-}
 
 func (w *WasmBytes) Copy(data []byte) {
 	// add 4 bytes to store the length of the data as uint32
@@ -87,9 +71,28 @@ func (w *WasmString) String() string {
 
 func main() {}
 
+/* DEFAULT ABI */
+
+// allocate memory that can be written to by the Wasm host
+// returns a pointer to this location in the modules linear memory.
+//go:export allocate
+func allocate(size int32) uintptr {
+	ptr := C.malloc(C.size_t(size))
+	return uintptr(ptr)
+}
+
+// enables the host to determine the size of a string
+//go:export get_string_size
+func getStringSize(a uintptr) int {
+	char := (*C.char)(unsafe.Pointer(uintptr(a)))
+	return int(C.strlen(char))
+}
+
+/* END DEFAULT ABI */
+
 //go:export sum
 func sum(a, b int) int {
-	fmt.Println("Hello")
+	//fmt.Println("Hello")
 	//get("test")
 	return a + b
 }
@@ -119,4 +122,21 @@ func reverse(inRaw WasmBytes) WasmBytes {
 	outRaw.Copy(outData)
 
 	return outRaw
+}
+
+//go:wasm-module plugin
+//export call_me
+func callMe(in WasmString) WasmString
+
+//go:export callback
+func callback() WasmString {
+	// get the string from the memory pointer
+	name := WasmString(0)
+	name.Copy("Nic")
+
+	s := callMe(name)
+	//s := WasmString(0)
+	//s.Copy("Hello")
+
+	return s // WasmString(0)
 }

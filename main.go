@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -22,6 +23,10 @@ func main() {
 	}
 
 	e := engine.New(log.Named("engine"))
+
+	// add a function that can be called by wasm
+	e.AddCallback("call_me", callMe)
+
 	err := e.LoadPlugin(*plugin)
 	if err != nil {
 		log.Error("Error loading plugin", "error", err)
@@ -54,4 +59,18 @@ func main() {
 		os.Exit(1)
 	}
 	log.Info("Response from function", "name", "reverse", "result", outData)
+
+	err = e.CallFunction("callback", &outStr)
+	if err != nil {
+		log.Error("Error calling function", "name", "callback", "error", err)
+		os.Exit(1)
+	}
+	log.Info("Response from function", "name", "callback", "result", outStr)
+}
+
+func callMe(in string) string {
+	out := fmt.Sprintf("Hello %s", in)
+	fmt.Println(out)
+
+	return out
 }
