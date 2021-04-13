@@ -6,6 +6,7 @@ package main
 import "C"
 import (
 	"encoding/binary"
+	"fmt"
 	"unsafe"
 )
 
@@ -130,6 +131,7 @@ func callMe(in WasmString) WasmString
 
 //go:export callback
 func callback() WasmString {
+	fmt.Println("Running Function")
 	// get the string from the memory pointer
 	name := WasmString(0)
 	name.Copy("Nic")

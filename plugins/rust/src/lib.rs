@@ -36,6 +36,18 @@ fn ptr_from_bytes(data: Vec<u8>) -> *mut c_void {
   pointer as *mut c_void
 }
 
+fn ptr_from_string(data: String) -> *mut c_char {
+  let str = CString::new(data).expect("Expected CString to be created from string");
+  let ptr = str.into_raw();
+
+  return ptr
+}
+
+fn string_from_ptr(ptr: *mut c_char) -> String {
+  let str = unsafe { CString::from_raw(ptr) }.into_string().expect("Expected CString to be created from ptr");
+  return str;
+}
+
 #[no_mangle]
 pub extern fn allocate(size: usize) -> *mut c_void {
   let mut buffer:Vec<u8> = Vec::with_capacity(size);
@@ -55,8 +67,10 @@ pub extern fn deallocate(pointer: *mut c_void, capacity: usize) {
 #[no_mangle]
 pub extern fn get_string_size(raw: *mut c_char) -> usize {
   unsafe {
-    let c_string = CString::from_raw(raw);
-    c_string.as_bytes().len()
+    // use CStr as this borrows the reference
+    // CString will reclaim the reference
+    let c_string = CStr::from_ptr(raw);
+    c_string.to_bytes().len()
   }
 }
 
@@ -65,23 +79,39 @@ pub extern fn sum(x: i32, y: i32) -> i32 {
   x + y
 }
 
+#[link(wasm_import_module = "plugin")]
+extern "C" {
+    fn call_me(name: *mut c_char) -> *mut c_char;
+}
+
 #[no_mangle]
-pub extern fn hello(raw: *mut c_char) -> *mut c_char {
-  // fetch the string from memory
-  let in_param = unsafe{  CStr::from_ptr(raw).to_bytes().to_vec()  };
+pub extern fn hello(name: *mut c_char) -> *mut c_char {
+  // fetch the string from the ptr passed to the function
+  let in_param = string_from_ptr(name);
 
-  // combine the input and output
-  let mut output = b"Hello ".to_vec();
-  output.extend(&in_param);
-
+  // append the name
+  let mut output = "Hello ".to_owned();
+  output.push_str(&in_param);
+  
   // create a pointer to a c_str to return to the caller
-  unsafe { CString::from_vec_unchecked(output) }.into_raw()
+  return ptr_from_string(output);
 }
 
 #[no_mangle]
 pub extern fn reverse(raw: *mut c_void) -> *mut c_void {
   let data_in = bytes_from_ptr(raw);
   return ptr_from_bytes(data_in.into_iter().rev().collect());
+}
+
+#[no_mangle]
+pub extern fn callback() -> *mut c_char {
+  // uses the Wasi interface for printing on the host
+  println!("Hello, world!");
+
+  let name = ptr_from_string("World".to_owned());
+  let result = unsafe { call_me(name) };
+  
+  return result;
 }
 
 #[cfg(test)]

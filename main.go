@@ -33,6 +33,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = e.GetInstance()
+	if err != nil {
+		log.Error("Error getting plugin instance", "error", err)
+		os.Exit(1)
+	}
+
 	// test calling an int
 	var outInt int32
 	err = e.CallFunction("sum", &outInt, 3, 2)

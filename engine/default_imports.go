@@ -4,13 +4,13 @@ import (
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
-func addDefaults(importObject *wasmer.ImportObject, store *wasmer.Store) {
+func (w *Wasm) addDefaults() {
 
-	importObject.Register(
+	w.importObject.Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"abort": wasmer.NewFunction(
-				store,
+				w.store,
 				wasmer.NewFunctionType(
 					wasmer.NewValueTypes(wasmer.I32, wasmer.I32, wasmer.I32, wasmer.I32),
 					wasmer.NewValueTypes(),

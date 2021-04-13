@@ -14,40 +14,56 @@ type Wasm struct {
 	instance          *wasmer.Instance
 	store             *wasmer.Store
 	importObject      *wasmer.ImportObject
+	module            *wasmer.Module
 	instanceFunctions *instanceFunctions
-	callbackFunctions map[string]wasmer.IntoExtern
+	callbackFunctions map[string]interface{}
 }
 
 func New(log hclog.Logger) *Wasm {
-	cbf := map[string]wasmer.IntoExtern{}
+	cbf := map[string]interface{}{}
 	w := &Wasm{log: log, callbackFunctions: cbf}
-
-	engine := wasmer.NewEngine()
-	w.store = wasmer.NewStore(engine)
-	w.importObject = wasmer.NewImportObject()
 
 	return w
 }
 
 func (w *Wasm) LoadPlugin(path string) error {
+	engine := wasmer.NewEngine()
+	w.store = wasmer.NewStore(engine)
+
 	wasmBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("Unable to load WASM module, error: %s", err)
 	}
-
-	// Add the default imports
-	addDefaults(w.importObject, w.store)
-	w.addWasi(w.importObject)
-	w.addCallbacks("plugin", w.importObject)
 
 	// Compile the module
 	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
 		return fmt.Errorf("Unable to instantiate WASM module, error: %s", err)
 	}
+	w.module = module
 
+	// Add the Wasi environment
+	wasi, err := wasmer.NewWasiStateBuilder("wasi-plugins").Environment("TESTER", "NIC").MapDirectory("host", "./").Finalize()
+	if err != nil {
+		return err
+	}
+
+	wi, err := wasi.GenerateImportObject(w.store, w.module)
+	if err != nil {
+		return err
+	}
+	w.importObject = wi
+
+	// Add the default imports
+	w.addDefaults()
+	w.addCallbacks("plugin")
+
+	return nil
+}
+
+func (w *Wasm) GetInstance() error {
 	// Create the new instance of the module
-	instance, err := wasmer.NewInstance(module, w.importObject)
+	instance, err := wasmer.NewInstance(w.module, w.importObject)
 	if err != nil {
 		return fmt.Errorf("Unable to create a new instance of the WASM module, error: %s", err)
 	}
@@ -158,7 +174,6 @@ func (w *Wasm) getBytesFromMemory(addr int32) ([]byte, error) {
 
 	//get the size of the data from the first 4 bytes
 	byteLen := binary.LittleEndian.Uint32(m.Data()[addr:])
-	fmt.Println(m.Data()[addr : addr+7])
 
 	// copy the data
 	data := make([]byte, byteLen)
