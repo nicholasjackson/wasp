@@ -3,21 +3,31 @@ package engine
 import (
 	"reflect"
 
+	"github.com/nicholasjackson/wasp/engine/logger"
 	"github.com/wasmerio/wasmer-go/wasmer"
 	"golang.org/x/xerrors"
 )
 
-// AddCallback exposes add a function that can be called from the Wasm module
-func (w *Wasm) AddCallback(namespace string, name string, f interface{}) {
-	// does the namespace exist
-	if _, ok := w.callbackFunctions[namespace]; !ok {
-		w.callbackFunctions[namespace] = make(map[string]interface{})
-	}
-
-	w.callbackFunctions[namespace][name] = f
+type Callbacks struct {
+	callbackFunctions map[string]map[string]interface{}
 }
 
-func (w *Wasm) addCallbacks(i *Instance) {
+// AddCallback exposes add a function that can be called from the Wasm module
+func (c *Callbacks) AddCallback(namespace string, name string, f interface{}) {
+	// ensure the collection is instantiated
+	if c.callbackFunctions == nil {
+		c.callbackFunctions = make(map[string]map[string]interface{})
+	}
+
+	// does the namespace exist
+	if _, ok := c.callbackFunctions[namespace]; !ok {
+		c.callbackFunctions[namespace] = make(map[string]interface{})
+	}
+
+	c.callbackFunctions[namespace][name] = f
+}
+
+func (w *Callbacks) addCallbacks(i *Instance, store *wasmer.Store, log *logger.Wrapper) {
 	for ns, fs := range w.callbackFunctions {
 		callbacks := map[string]wasmer.IntoExtern{}
 
@@ -36,11 +46,11 @@ func (w *Wasm) addCallbacks(i *Instance) {
 			}
 
 			callbacks[name] = wasmer.NewFunction(
-				w.store,
+				store,
 				wasmer.NewFunctionType(wasmer.NewValueTypes(inParams...), wasmer.NewValueTypes(outParams...)),
 				func(args []wasmer.Value) ([]wasmer.Value, error) {
 
-					w.log.Info("Callback called")
+					log.Debug("Callback called")
 
 					// build the parameter list
 					inParams := []reflect.Value{}
@@ -66,7 +76,8 @@ func (w *Wasm) addCallbacks(i *Instance) {
 					// call the function
 					f := reflect.ValueOf(f)
 					out := f.Call(inParams)
-					w.log.Debug("Called callback function", "out", out)
+
+					log.Debug("Called callback function", "out", out)
 
 					// process the response parameters
 					outParams := []wasmer.Value{}

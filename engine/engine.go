@@ -10,15 +10,13 @@ import (
 )
 
 type Wasm struct {
-	log               *logger.Wrapper
-	store             *wasmer.Store
-	callbackFunctions map[string]map[string]interface{}
-	plugins           map[string]*plugin
+	log     *logger.Wrapper
+	store   *wasmer.Store
+	plugins map[string]*plugin
 }
 
 func New(log *logger.Wrapper) *Wasm {
-	cbf := map[string]map[string]interface{}{}
-	w := &Wasm{log: log, callbackFunctions: cbf}
+	w := &Wasm{log: log}
 
 	engine := wasmer.NewEngine()
 	w.store = wasmer.NewStore(engine)
@@ -27,7 +25,7 @@ func New(log *logger.Wrapper) *Wasm {
 	return w
 }
 
-func (w *Wasm) RegisterPlugin(name, path string, pluginConfig *PluginConfig) error {
+func (w *Wasm) RegisterPlugin(name, path string, callbacks *Callbacks, pluginConfig *PluginConfig) error {
 	wasmBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return xerrors.Errorf("unable to load WASM module: %w", err)
@@ -40,7 +38,8 @@ func (w *Wasm) RegisterPlugin(name, path string, pluginConfig *PluginConfig) err
 	}
 
 	p := &plugin{
-		module: module,
+		module:    module,
+		callbacks: callbacks,
 	}
 
 	w.plugins[name] = p
@@ -72,7 +71,11 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 
 	// Add the default imports
 	w.addDefaults(inst)
-	w.addCallbacks(inst)
+
+	// register any callbacks
+	if p.callbacks != nil {
+		p.callbacks.addCallbacks(inst, w.store, w.log)
+	}
 
 	// Create the new instance of the module
 	instance, err := wasmer.NewInstance(p.module, io)

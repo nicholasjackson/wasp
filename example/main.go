@@ -27,10 +27,11 @@ func main() {
 
 	e := engine.New(wl)
 
-	// add a function that can be called by wasm
-	e.AddCallback("env", "call_me", callMe)
+	// add functions that can be imported by Wasm modules
+	cb := &engine.Callbacks{}
+	cb.AddCallback("env", "call_me", callMe)
 
-	err := e.RegisterPlugin("test", *plugin, nil)
+	err := e.RegisterPlugin("test", *plugin, cb, nil)
 	if err != nil {
 		log.Error("Error loading plugin", "error", err)
 		os.Exit(1)

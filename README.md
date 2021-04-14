@@ -84,7 +84,7 @@ wrappedLogger = logger.New(
 e := engine.New(wrappedLogger)
 
 // Register and compile the Wasm module to the plugin engine
-err := e.RegisterPlugin("myplugin", "./plugins/go/module.wasm", nil)
+err := e.RegisterPlugin("myplugin", "./plugins/go/module.wasm", nil, nil)
 if err != nil {
 	log.Error("Error loading plugin", "error", err)
 	os.Exit(1)
@@ -168,13 +168,19 @@ func callback() WasmString {
 
 ```
 
-To use callbacks they must first be registered, registration is done by calling the `AddCallback` method, this takes two parameters, the name of the
-function that it will be available to the Wasm module, and a Go function. Wasp uses reflection to automatically manage the function parameters, it also
-automatically converts any string or []byte types into pointers that the Wasm module can decode.
+To use callbacks they must first be registered, registration is done by creaing a Callbacks type that will contain all the callbacks for your plugin,
+You then use the `AddCallback` method, this takes three parameters, the module name that the imported function will be available at. The name of the
+function that it will be available to the Wasm module, and a Go function that will be executed. Wasp uses reflection to automatically manage the function parameters, it also automatically converts any `string` or `[]byte` types into pointers that the Wasm module can decode.
 
 ```go
-// add a function that can be called by the Wasm module
-e.AddCallback("plugin", "call_me", callMe)
+cb := &engine.Callbacks{}
+cb.AddCallback("plugin", "call_me", callMe)
+```
+
+Once you have created your callbacks they can be made available to the plugin by passing the collection to the `RegisterPlugin` function.
+
+```go
+err := e.RegisterPlugin("test", *plugin, cb, nil)
 ```
 
 ```

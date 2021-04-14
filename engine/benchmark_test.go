@@ -11,9 +11,10 @@ func setupEngine(module string, b *testing.B) *Instance {
 	log := logger.New(nil, nil, nil, nil)
 	e := New(log)
 
-	e.AddCallback("env", "call_me", callMe)
+	cb := &Callbacks{}
+	cb.AddCallback("env", "call_me", callMe)
 
-	err := e.RegisterPlugin("test", module, nil)
+	err := e.RegisterPlugin("test", module, cb, nil)
 	if err != nil {
 		b.Error(err)
 		b.Fail()
