@@ -4,9 +4,9 @@ import (
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
-func (w *Wasm) addDefaults() {
+func (w *Wasm) addDefaults(i *Instance) {
 
-	w.importObject.Register(
+	i.importObject.Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"abort": wasmer.NewFunction(

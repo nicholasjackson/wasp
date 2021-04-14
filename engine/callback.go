@@ -12,7 +12,7 @@ func (w *Wasm) AddCallback(name string, f interface{}) {
 	w.callbackFunctions[name] = f
 }
 
-func (w *Wasm) addCallbacks(namespace string) {
+func (w *Wasm) addCallbacks(namespace string, i *Instance) {
 	callbacks := map[string]wasmer.IntoExtern{}
 
 	for name, f := range w.callbackFunctions {
@@ -38,10 +38,10 @@ func (w *Wasm) addCallbacks(namespace string) {
 
 				// build the parameter list
 				inParams := []reflect.Value{}
-				for i := 0; i < callback.NumIn(); i++ {
-					switch callback.In(i).Kind() {
+				for n := 0; n < callback.NumIn(); n++ {
+					switch callback.In(n).Kind() {
 					case reflect.String:
-						in, err := w.getStringFromMemory(args[i].I32())
+						in, err := i.getStringFromMemory(args[n].I32())
 						if err != nil {
 							panic(err)
 						}
@@ -49,7 +49,7 @@ func (w *Wasm) addCallbacks(namespace string) {
 						ps := reflect.ValueOf(in)
 						inParams = append(inParams, ps)
 					case reflect.Int32:
-						ps := reflect.ValueOf(args[i].I32())
+						ps := reflect.ValueOf(args[n].I32())
 						inParams = append(inParams, ps)
 
 					default:
@@ -64,17 +64,17 @@ func (w *Wasm) addCallbacks(namespace string) {
 
 				// process the response parameters
 				outParams := []wasmer.Value{}
-				for i := 0; i < callback.NumOut(); i++ {
-					switch callback.In(i).Kind() {
+				for n := 0; n < callback.NumOut(); n++ {
+					switch callback.In(n).Kind() {
 					case reflect.String:
-						s, err := w.setStringInMemory(out[i].String())
+						s, err := i.setStringInMemory(out[n].String())
 						if err != nil {
 							panic(err)
 						}
 
 						outParams = append(outParams, wasmer.NewI32(s))
 					case reflect.Int32:
-						outParams = append(outParams, wasmer.NewI32(out[i].Int()))
+						outParams = append(outParams, wasmer.NewI32(out[n].Int()))
 
 					default:
 						return nil, fmt.Errorf("Only String and Int32 parameters can be used for callback functions")
@@ -86,5 +86,5 @@ func (w *Wasm) addCallbacks(namespace string) {
 		)
 	}
 
-	w.importObject.Register(namespace, callbacks)
+	i.importObject.Register(namespace, callbacks)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/nicholasjackson/wasp/engine"
+	"github.com/nicholasjackson/wasp/engine/logger"
 )
 
 var plugin = flag.String("plugin", "", "Path to the Wasm module to load")
@@ -22,18 +23,20 @@ func main() {
 		log.SetLevel(hclog.Debug)
 	}
 
-	e := engine.New(log.Named("engine"))
+	wl := wrappedHCLogger(log.Named("engine"))
+
+	e := engine.New(wl)
 
 	// add a function that can be called by wasm
 	e.AddCallback("call_me", callMe)
 
-	err := e.LoadPlugin(*plugin)
+	err := e.RegisterPlugin("test", *plugin)
 	if err != nil {
 		log.Error("Error loading plugin", "error", err)
 		os.Exit(1)
 	}
 
-	err = e.GetInstance()
+	i, err := e.GetInstance("test")
 	if err != nil {
 		log.Error("Error getting plugin instance", "error", err)
 		os.Exit(1)
@@ -41,7 +44,7 @@ func main() {
 
 	// test calling an int
 	var outInt int32
-	err = e.CallFunction("sum", &outInt, 3, 2)
+	err = i.CallFunction("sum", &outInt, 3, 2)
 	if err != nil {
 		log.Error("Error calling function", "name", "sum", "error", err)
 		os.Exit(1)
@@ -50,7 +53,7 @@ func main() {
 
 	// test calling a string
 	var outStr string
-	err = e.CallFunction("hello", &outStr, "Nic")
+	err = i.CallFunction("hello", &outStr, "Nic")
 	if err != nil {
 		log.Error("Error calling function", "name", "hello", "error", err)
 		os.Exit(1)
@@ -59,14 +62,14 @@ func main() {
 
 	// test calling bytes
 	var outData []byte
-	err = e.CallFunction("reverse", &outData, []byte{1, 2, 3})
+	err = i.CallFunction("reverse", &outData, []byte{1, 2, 3})
 	if err != nil {
 		log.Error("Error calling function", "name", "reverse", "error", err)
 		os.Exit(1)
 	}
 	log.Info("Response from function", "name", "reverse", "result", outData)
 
-	err = e.CallFunction("callback", &outStr)
+	err = i.CallFunction("callback", &outStr)
 	if err != nil {
 		log.Error("Error calling function", "name", "callback", "error", err)
 		os.Exit(1)
@@ -79,4 +82,8 @@ func callMe(in string) string {
 	fmt.Println(out)
 
 	return out
+}
+
+func wrappedHCLogger(hl hclog.Logger) *logger.Wrapper {
+	return logger.New(hl.Info, hl.Debug, hl.Error, hl.Trace)
 }

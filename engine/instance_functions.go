@@ -3,36 +3,23 @@ package engine
 // instanceFunctions are functions that must be exported in the destination
 // Wasm module to satisfy Wasps ABI
 type instanceFunctions struct {
-	getStringSize func(...interface{}) (interface{}, error)
-	allocate      func(...interface{}) (interface{}, error)
-	deallocate    func(int32) (int32, error)
+	inst *Instance
 }
 
-func NewInstanceFunctions(w *Wasm) (*instanceFunctions, error) {
-	i := &instanceFunctions{}
-
-	//get the size of the string
-	stringSize, err := w.instance.Exports.GetFunction("get_string_size")
-	if err != nil {
-		return nil, err
-	}
-
-	i.getStringSize = stringSize
-
-	allocate, err := w.instance.Exports.GetFunction("allocate")
-	if err != nil {
-		return nil, err
-	}
-
-	i.allocate = allocate
-
-	return i, nil
+func NewInstanceFunctions(inst *Instance) *instanceFunctions {
+	return &instanceFunctions{inst}
 }
 
 // GetStringSize calls the Wasm module to discover the size of the string
 // referenced by the memory address addr
-func (i *instanceFunctions) GetStringSize(addr int32) (int32, error) {
-	r, err := i.getStringSize(addr)
+func (i *instanceFunctions) getStringSize(addr int32) (int32, error) {
+	//get the size of the string
+	stringSize, err := i.inst.instance.Exports.GetFunction("get_string_size")
+	if err != nil {
+		return 0, err
+	}
+
+	r, err := stringSize(addr)
 	if err != nil {
 		return 0, err
 	}
@@ -41,8 +28,13 @@ func (i *instanceFunctions) GetStringSize(addr int32) (int32, error) {
 }
 
 // Allocate
-func (i *instanceFunctions) Allocate(size int32) (int32, error) {
-	r, err := i.allocate(size)
+func (i *instanceFunctions) allocate(size int32) (int32, error) {
+	allocate, err := i.inst.instance.Exports.GetFunction("allocate")
+	if err != nil {
+		return 0, err
+	}
+
+	r, err := allocate(size)
 	if err != nil {
 		return 0, err
 	}
