@@ -1,4 +1,4 @@
-module github.com/nicholasjackson/go-wasm-plugins
+module github.com/nicholasjackson/wasp
 
 go 1.15
 
