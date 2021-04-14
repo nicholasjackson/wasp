@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/nicholasjackson/go-wasm-plugins/engine"
+	"github.com/nicholasjackson/wasp/engine"
 )
 
 var plugin = flag.String("plugin", "", "Path to the Wasm module to load")
