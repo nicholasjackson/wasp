@@ -77,13 +77,13 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 	// Create the new instance of the module
 	instance, err := wasmer.NewInstance(p.module, io)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create a new instance of the plugin, error: %s", err)
+		return nil, xerrors.Errorf("unable to create a new instance of the plugin: %w", err)
 	}
 
 	// Setup the default functions that are required for memory manipulation operations
 	wi := NewInstanceFunctions(inst)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to import default functions, ensure that the Wasm module correctly imports the base ABI, error: %s", err)
+		return nil, fmt.Errorf("unable to import default functions, ensure that the Wasm module correctly imports the base ABI: %w", err)
 	}
 
 	inst.instanceFunctions = wi

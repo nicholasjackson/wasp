@@ -56,7 +56,7 @@ Current examples in the repo show how plugins can be written in:
 * Go (TinyGo)
 * C
 * Rust
-* Java
+* Java (Kind of Works)
 * AssemblyScript
 
 ## Basic Usage:
@@ -64,27 +64,50 @@ Current examples in the repo show how plugins can be written in:
 The following example shows how Wasp can be used to call the method `hello` that was exported from a Wasm module. First you create an instance of the engine and load the plugin.
 
 ```go
-// Create a logger
+
+// Create a logger 
 log := hclog.Default()
 log = log.Named("main")
+engineLog = log.Named("engine")
+
+// the wasp engine takes a wrapped logger that adapts your
+// logger interface into wasps
+wrappedLogger = logger.New(
+  engineLog.Info,
+  engineLog.Debug,
+  engineLog.Error,
+  engineLog.Trace
+)
+
 
 // Create the plugin engine 
-e := engine.New(log.Named("engine"))
- 
-// Load and compile the wasm module
-err := e.LoadPlugin("./plugins/go/module.wasm")
+e := engine.New(wrappedLogger)
+
+// Register and compile the Wasm module to the plugin engine
+err := e.RegisterPlugin("myplugin", "./plugins/go/module.wasm", nil)
 if err != nil {
 	log.Error("Error loading plugin", "error", err)
 	os.Exit(1)
 }
+
+// Get an instance of the plugin, an instance is an independently sand boxed environment
+// that has it's own memory and filesystem.
+i, err := e.GetInstance("myplugin", "")
+if err != nil {
+	log.Error("Error getting plugin instance", "error", err)
+	os.Exit(1)
+}
+
+// Clean up any resources used by the instance
+defer i.Remove()
 ```
 
-Then you can use the `CallFunction` method on the engine to call the `hello` function exported from the Wasm module, Wasp automatically converts Go types into the simple types understood by the Wasm module. In the following example Wasp would take the input string "hello", allocate the required memory inside the Wasm module, copy the string data to this memory before calling the destination function with a pointer to this string. Responses work exactly the same way in reverse. 
+Then you can use the `CallFunction` method on the instance to call the `hello` function exported from the Wasm module, Wasp automatically converts Go types into the simple types understood by the Wasm module. In the following example Wasp would take the input string "hello", allocate the required memory inside the Wasm module, copy the string data to this memory before calling the destination function with a pointer to this string. Responses work exactly the same way in reverse. 
 
 ```go
 // Call the function hello that is exported by the module
 var outString string
-err = e.CallFunction("hello", &outString, 3, 2)
+err = i.CallFunction("hello", &outString, 3, 2)
 if err != nil {
 	log.Error("Error calling function", "name", "hello", "error", err)
 	os.Exit(1)
@@ -103,7 +126,7 @@ log.Info("Response from function", "name", "reverse", "result", outData)
 
 ## Callbacks
 
-Callbacks can be defined that allow a local function to be called from the Wasm module. For example, if your application contains the Go function:
+Callbacks can be defined to allow a local function to be called from the Wasm module. For example, if your application contains the Go function:
 
 ```go
 func callMe(in string) string {
@@ -151,7 +174,7 @@ automatically converts any string or []byte types into pointers that the Wasm mo
 
 ```go
 // add a function that can be called by the Wasm module
-e.AddCallback("call_me", callMe)
+e.AddCallback("plugin", "call_me", callMe)
 ```
 
 ```
@@ -168,17 +191,19 @@ Calling functions in Wasm modules will never be as fast as native Go functions a
 
 ```shell
 ➜ go test -bench=. ./...
-?       github.com/nicholasjackson/go-wasm-plugins      [no test files]
 goos: linux
 goarch: amd64
-pkg: github.com/nicholasjackson/go-wasm-plugins/engine
+pkg: github.com/nicholasjackson/wasp/engine
 cpu: AMD Ryzen 9 3950X 16-Core Processor            
-BenchmarkSumGoWASM-32                     402475              3003 ns/op
-BenchmarkSumRustWASM-32                   336662              3048 ns/op
-BenchmarkSumTypeScriptWASM-32             363423              3068 ns/op
-BenchmarkSumNative-32                   1000000000               0.2330 ns/op
+BenchmarkSumGoWASM-32                     401122              2929 ns/op
+BenchmarkSumRustWASM-32                   397934              3044 ns/op
+BenchmarkSumTypeScriptWASM-32             340573              3045 ns/op
+BenchmarkSumCWASM-32                      389580              3043 ns/op
+BenchmarkSumNative-32                   1000000000               0.2505 ns/op
 PASS
-ok      github.com/nicholasjackson/go-wasm-plugins/engine       4.737s
+ok      github.com/nicholasjackson/wasp/engine  7.420s
+?       github.com/nicholasjackson/wasp/engine/logger   [no test files]
+?       github.com/nicholasjackson/wasp/example [no test files]
 ```
 
 ## Features:
@@ -191,6 +216,6 @@ ok      github.com/nicholasjackson/go-wasm-plugins/engine       4.737s
 [x] Receive and send slices of bytes []byte  
 [ ] Ability to define custom ABIs for plugins, currently this is hard coded  
 [ ] Tests, lots and lots of tests  
-[ ] Support Wasi standard  
+[x] Support Wasi standard  
 [ ] Define more robust helper packages for managing complex types  
 [ ] Check for memory leaks  
