@@ -15,7 +15,15 @@ type Wasm struct {
 	plugins map[string]*plugin
 }
 
+// New creates a new instance of the engine, it takes a single parameter
+// logger.Wrapper is used by the engine to log output.
+// To create an engine without logging pass nil to the New function
 func New(log *logger.Wrapper) *Wasm {
+	if log == nil {
+		// create a nil logger
+		log = logger.New(nil, nil, nil, nil)
+	}
+
 	w := &Wasm{log: log}
 
 	engine := wasmer.NewEngine()
