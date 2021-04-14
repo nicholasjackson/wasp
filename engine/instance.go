@@ -15,6 +15,13 @@ type Instance struct {
 	importObject      *wasmer.ImportObject
 	instanceFunctions *instanceFunctions
 	log               *logger.Wrapper
+	// Volume is the name of the instance specific volume
+	Volume string
+}
+
+// Remove the instance and cleanup any volumes
+func (i *Instance) Remove() error {
+	return nil
 }
 
 // CallFunction in the Wasm module with the given parameters
@@ -38,9 +45,17 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 			// the string to it
 			addr, err := i.setStringInMemory(p.(string))
 			if err != nil {
-				return err
+				return fmt.Errorf("Unable to set string in module memory, err: %s", err)
 			}
 			processedParams[n] = addr
+
+			i.log.Debug(
+				"Setting string in instance memory",
+				"string",
+				p,
+				"addr",
+				addr,
+			)
 
 		case []byte:
 			// we have a byte slice parameter, copy this into the Wasm modules
@@ -114,7 +129,7 @@ func (i *Instance) setStringInMemory(s string) (int32, error) {
 	size := len(s) + 1 // allocate 1 more byte than the string size for the null terminator
 	addr, err := i.instanceFunctions.allocate(int32(size))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("Unable to allocate memory in wasm module, err: %s", err)
 	}
 
 	i.log.Debug(

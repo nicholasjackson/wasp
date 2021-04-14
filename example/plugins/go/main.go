@@ -125,7 +125,8 @@ func reverse(inRaw WasmBytes) WasmBytes {
 	return outRaw
 }
 
-//go:wasm-module plugin
+// Default modules can be changed with the following comment go:wasm-module plugin
+
 //export call_me
 func callMe(in WasmString) WasmString
 

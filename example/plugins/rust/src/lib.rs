@@ -79,7 +79,8 @@ pub extern fn sum(x: i32, y: i32) -> i32 {
   x + y
 }
 
-#[link(wasm_import_module = "plugin")]
+// uncomment the following line to change the default external function module
+// #[link(wasm_import_module = "plugin")]
 extern "C" {
     fn call_me(name: *mut c_char) -> *mut c_char;
 }

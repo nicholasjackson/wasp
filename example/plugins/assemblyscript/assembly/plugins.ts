@@ -1,2 +1,2 @@
-@external("plugin", "call_me")
+@external("env", "call_me")
 export declare function call_me(inRaw: ArrayBuffer): ArrayBuffer;

@@ -1,4 +1,6 @@
+import "wasi"
 import { call_me } from "./plugins";
+
 
 function bytes_from_buffer(raw: ArrayBuffer): Int8Array {
   // the length of the data is stored in the buffer in the first 4 bytes we can discard this
@@ -20,8 +22,9 @@ function buffer_from_bytes(data: Int8Array): ArrayBuffer {
   return buffer;
 } 
 
-export function allocate(size: i32): ArrayBuffer {
-  return new ArrayBuffer(size);
+export function allocate(size: i32): Int8Array{
+  console.log("allocate " + size.toString());
+  return new Int8Array(size);
 }
 
 export function get_string_size(b: ArrayBuffer): i32 {
@@ -35,7 +38,7 @@ export function sum(a: i32, b: i32): i32 {
 export function hello(name: ArrayBuffer): ArrayBuffer {
   let inParam = String.UTF8.decode(name,true)
 
-  //console.log("writing" + inParam)
+  console.log("writing" + inParam);
   return String.UTF8.encode("Hello " + inParam, true)
 }
 

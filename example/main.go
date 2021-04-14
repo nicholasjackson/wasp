@@ -28,19 +28,23 @@ func main() {
 	e := engine.New(wl)
 
 	// add a function that can be called by wasm
-	e.AddCallback("call_me", callMe)
+	e.AddCallback("env", "call_me", callMe)
 
-	err := e.RegisterPlugin("test", *plugin)
+	err := e.RegisterPlugin("test", *plugin, nil)
 	if err != nil {
 		log.Error("Error loading plugin", "error", err)
 		os.Exit(1)
 	}
 
-	i, err := e.GetInstance("test")
+	// Get a new instance of the plugin
+	i, err := e.GetInstance("test", "")
 	if err != nil {
 		log.Error("Error getting plugin instance", "error", err)
 		os.Exit(1)
 	}
+
+	// cleanup
+	defer i.Remove()
 
 	// test calling an int
 	var outInt int32

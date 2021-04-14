@@ -100,8 +100,11 @@ EMSCRIPTEN_KEEPALIVE void * reverse(void * bytes) {
   return ptr;
 }
 
+extern char * call_me(char * name);
+
 EMSCRIPTEN_KEEPALIVE char * callback() {
-  return "Hello";
+  char * result = call_me("Nic");
+  return result;
 }
 
 int main() {}

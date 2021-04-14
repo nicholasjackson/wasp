@@ -1311,7 +1311,7 @@ function preMain() {
 function exitRuntime() {
   checkStackCookie();
   callRuntimeCallbacks(__ATEXIT__);
-  
+  flush_NO_FILESYSTEM()
   runtimeExited = true;
 }
 
@@ -1777,10 +1777,18 @@ var ASM_CONSTS = {
       return demangleAll(js);
     }
 
-  function _exit(status) {
-      // void _exit(int status);
-      // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-      exit(status);
+  /** @type {function(...*):?} */
+  function _call_me(
+  ) {
+  err('missing function: call_me'); abort(-1);
+  }
+
+  function flush_NO_FILESYSTEM() {
+      // flush anything remaining in the buffers during shutdown
+      if (typeof _fflush !== 'undefined') _fflush(0);
+      var buffers = SYSCALLS.buffers;
+      if (buffers[1].length) SYSCALLS.printChar(1, 10);
+      if (buffers[2].length) SYSCALLS.printChar(2, 10);
     }
   
   var SYSCALLS={mappings:{},buffers:[null,[],[]],printChar:function(stream, curr) {
@@ -1805,6 +1813,26 @@ var ASM_CONSTS = {
         else assert(high === -1);
         return low;
       }};
+  function _fd_write(fd, iov, iovcnt, pnum) {
+      // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+      var num = 0;
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = HEAP32[(((iov)+(i*8))>>2)];
+        var len = HEAP32[(((iov)+(i*8 + 4))>>2)];
+        for (var j = 0; j < len; j++) {
+          SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
+        }
+        num += len;
+      }
+      HEAP32[((pnum)>>2)] = num
+      return 0;
+    }
+
+  function _exit(status) {
+      // void _exit(int status);
+      // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
+      exit(status);
+    }
   function _proc_exit(code) {
       _exit(code);
     }
@@ -1838,6 +1866,8 @@ function intArrayToString(array) {
 
 
 var asmLibraryArg = {
+  "call_me": _call_me,
+  "fd_write": _fd_write,
   "proc_exit": _proc_exit
 };
 var asm = createWasm();

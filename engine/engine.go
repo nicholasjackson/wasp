@@ -6,21 +6,18 @@ import (
 
 	"github.com/nicholasjackson/wasp/engine/logger"
 	"github.com/wasmerio/wasmer-go/wasmer"
+	"golang.org/x/xerrors"
 )
-
-type plugin struct {
-	module *wasmer.Module
-}
 
 type Wasm struct {
 	log               *logger.Wrapper
 	store             *wasmer.Store
-	callbackFunctions map[string]interface{}
+	callbackFunctions map[string]map[string]interface{}
 	plugins           map[string]*plugin
 }
 
 func New(log *logger.Wrapper) *Wasm {
-	cbf := map[string]interface{}{}
+	cbf := map[string]map[string]interface{}{}
 	w := &Wasm{log: log, callbackFunctions: cbf}
 
 	engine := wasmer.NewEngine()
@@ -30,16 +27,16 @@ func New(log *logger.Wrapper) *Wasm {
 	return w
 }
 
-func (w *Wasm) RegisterPlugin(name, path string) error {
+func (w *Wasm) RegisterPlugin(name, path string, pluginConfig *PluginConfig) error {
 	wasmBytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("Unable to load WASM module, error: %s", err)
+		return xerrors.Errorf("unable to load WASM module: %w", err)
 	}
 
 	// Compile the module
 	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
-		return fmt.Errorf("Unable to instantiate WASM module, error: %s", err)
+		return xerrors.Errorf("unable to instantiate WASM module: %w", err)
 	}
 
 	p := &plugin{
@@ -51,18 +48,18 @@ func (w *Wasm) RegisterPlugin(name, path string) error {
 	return nil
 }
 
-func (w *Wasm) GetInstance(name string) (*Instance, error) {
+func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 	// find the plugin
 	p, ok := w.plugins[name]
 	if !ok {
-		return nil, fmt.Errorf("Plugin %s, not found", name)
+		return nil, xerrors.Errorf("plugin %s, not found, ensure all plugins are registered before use", name)
 	}
 
 	// Create the Wasi environment
 	// we can specify directories,etc for each instance
 	wasi, err := wasmer.NewWasiStateBuilder("wasi-plugins").Environment("TESTER", "NIC").MapDirectory("host", "./").Finalize()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unable to create Wasi state: %w", err)
 	}
 
 	io, err := wasi.GenerateImportObject(w.store, p.module)
@@ -75,7 +72,7 @@ func (w *Wasm) GetInstance(name string) (*Instance, error) {
 
 	// Add the default imports
 	w.addDefaults(inst)
-	w.addCallbacks("plugin", inst)
+	w.addCallbacks(inst)
 
 	// Create the new instance of the module
 	instance, err := wasmer.NewInstance(p.module, io)

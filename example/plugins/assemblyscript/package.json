@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@assemblyscript/loader": "^0.18.22",
+    "as-wasi": "^0.4.4",
     "left-pad": "^1.3.0"
   },
   "devDependencies": {
