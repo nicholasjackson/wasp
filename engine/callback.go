@@ -4,7 +4,6 @@ import (
 	"reflect"
 
 	"github.com/nicholasjackson/wasp/engine/logger"
-	"github.com/niemeyer/pretty"
 	"github.com/wasmerio/wasmer-go/wasmer"
 	"golang.org/x/xerrors"
 )
@@ -34,8 +33,6 @@ func (c *Callbacks) merge(cb *Callbacks) {
 			c.AddCallback(cb, name, f)
 		}
 	}
-
-	pretty.Println(c)
 }
 
 func (c *Callbacks) addCallbacks(i *Instance, store *wasmer.Store, log *logger.Wrapper) {
