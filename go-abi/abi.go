@@ -1,4 +1,4 @@
-package main
+package abi
 
 // #include <stdio.h>
 // #include <string.h>
@@ -6,7 +6,6 @@ package main
 import "C"
 import (
 	"encoding/binary"
-	"fmt"
 	"unsafe"
 )
 
@@ -70,8 +69,6 @@ func (w *WasmString) String() string {
 	return string(sbuf)
 }
 
-func main() {}
-
 /* DEFAULT ABI */
 
 // allocate memory that can be written to by the Wasm host
@@ -103,57 +100,7 @@ func getStringSize(a uintptr) int {
 	return int(C.strlen(char))
 }
 
+// Default workspace directory if available
+const DirWorkspace = "/workspace"
+
 /* END DEFAULT ABI */
-
-//go:export sum
-func sum(a, b int) int {
-	//fmt.Println("Hello")
-	//get("test")
-	return a + b
-}
-
-//go:export hello
-func hello(in WasmString) WasmString {
-	// get the string from the memory pointer
-	s := in.String()
-
-	out := WasmString(0)
-	out.Copy("Hello " + s)
-
-	return out
-}
-
-//go:export reverse
-func reverse(inRaw WasmBytes) WasmBytes {
-	inData := inRaw.Bytes()
-	outData := []byte{}
-
-	// reverse the array
-	for i := len(inData) - 1; i >= 0; i-- {
-		outData = append(outData, inData[i])
-	}
-
-	outRaw := WasmBytes(0)
-	outRaw.Copy(outData)
-
-	return outRaw
-}
-
-// Default modules can be changed with the following comment go:wasm-module plugin
-
-//export call_me
-func callMe(in WasmString) WasmString
-
-//go:export callback
-func callback() WasmString {
-	fmt.Println("Running Function")
-	// get the string from the memory pointer
-	name := WasmString(0)
-	name.Copy("Nic")
-
-	s := callMe(name)
-	//s := WasmString(0)
-	//s.Copy("Hello")
-
-	return s // WasmString(0)
-}

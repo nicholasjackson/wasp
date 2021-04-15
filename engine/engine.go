@@ -95,10 +95,7 @@ func (w *Wasm) RegisterPlugin(name, pluginPath string, pluginConfig *PluginConfi
 
 	p := &plugin{
 		module: module,
-	}
-
-	if pluginConfig != nil {
-		p.callbacks = pluginConfig.Callbacks
+		config: pluginConfig,
 	}
 
 	w.plugins[name] = p
@@ -125,12 +122,25 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 
 	// Create the Wasi environment
 	// we can specify directories,etc for each instance
-	wasi, err := wasmer.NewWasiStateBuilder("wasi-plugins").Environment("TESTER", "NIC").MapDirectory("host", "./").Finalize()
+	wasi := wasmer.NewWasiStateBuilder("wasi-plugins")
+
+	// add the environment variables
+	if p.config != nil && p.config.Environment != nil {
+		for k, v := range p.config.Environment {
+			wasi.Environment(k, v)
+		}
+	}
+
+	if workspaceDir != "" {
+		wasi.MapDirectory("workspace", workspaceDir)
+	}
+	//.Environment("TESTER", "NIC").MapDirectory("host", "./").Finalize()
+	sb, err := wasi.Finalize()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create Wasi state: %w", err)
 	}
 
-	io, err := wasi.GenerateImportObject(w.store, p.module)
+	io, err := sb.GenerateImportObject(w.store, p.module)
 	if err != nil {
 		return nil, err
 	}
@@ -142,8 +152,8 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 	w.addDefaults(inst)
 
 	// register any callbacks
-	if p.callbacks != nil {
-		p.callbacks.addCallbacks(inst, w.store, w.log)
+	if p.config != nil && p.config.Callbacks != nil {
+		p.config.Callbacks.addCallbacks(inst, w.store, w.log)
 	}
 
 	// Create the new instance of the module

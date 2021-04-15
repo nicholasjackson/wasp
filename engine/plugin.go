@@ -3,8 +3,8 @@ package engine
 import "github.com/wasmerio/wasmer-go/wasmer"
 
 type plugin struct {
-	module    *wasmer.Module
-	callbacks *Callbacks
+	module *wasmer.Module
+	config *PluginConfig
 }
 
 // PluginConfig defines configuration for the plugin environment

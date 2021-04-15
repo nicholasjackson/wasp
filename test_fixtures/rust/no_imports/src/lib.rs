@@ -1,4 +1,5 @@
 use std::ffi::{CStr, CString};
+use std::fs::write;
 use std::mem;
 use std::os::raw::{c_char, c_void};
 
@@ -85,4 +86,28 @@ pub extern fn hello(name: *mut c_char) -> *mut c_char {
   
   // create a pointer to a c_str to return to the caller
   return ptr_from_string(output);
+}
+
+#[no_mangle]
+pub extern fn workspace_write(dir: *mut c_char) {
+  // fetch the string from the ptr passed to the function
+  let in_param = string_from_ptr(dir);
+
+  let mut in_file =  in_param.to_owned();
+  in_file.push_str("/in.txt");
+  
+  match std::fs::read_to_string(in_file) {
+    Ok(s) => print!("Read file {}\n",s),
+    Err(e) => print!("No Read file {}\n",e),
+  };
+
+  let mut out_file =  in_param.to_owned();
+  out_file.push_str("/hello.txt");
+
+  print!("Writing file {}\n",out_file);
+
+  match std::fs::write(in_param,"blah") {
+    Ok(_) => print!("Written file\n"),
+    Err(e) => print!("No Read file {}\n",e),
+  }
 }

@@ -39,7 +39,7 @@ func perfSetupEngine(t *testing.T, module string, cb *Callbacks) *Instance {
 }
 
 func TestCallsFunctionWithStringParamsMultipleTimes(t *testing.T) {
-
+	t.Skip()
 	// check no goroutines are running after the test
 	defer goleak.VerifyNone(t)
 
@@ -76,7 +76,7 @@ func TestCallsFunctionWithStringParamsMultipleTimes(t *testing.T) {
 }
 
 func TestCallsFunctionWithIntParamsMultipleTimes(t *testing.T) {
-
+	t.Skip()
 	// check no goroutines are running after the test
 	defer goleak.VerifyNone(t)
 

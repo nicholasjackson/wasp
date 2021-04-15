@@ -1,2 +1,2 @@
 build:
-	cd string_func && cargo wasi build && cp ./target/wasm32-wasi/debug/module.wasi.wasm ./module.wasm
+	cd no_imports && cargo wasi build && cp ./target/wasm32-wasi/debug/module.wasi.wasm ./module.wasm
