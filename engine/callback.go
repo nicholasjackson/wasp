@@ -127,7 +127,7 @@ func createCallback(i *Instance, ns, name string, callFunc interface{}) (*wasmer
 
 				outParams = append(outParams, wasmer.NewI32(s))
 			case reflect.Int32:
-				outParams = append(outParams, wasmer.NewI32(out[n].Int()))
+				outParams = append(outParams, wasmer.NewI32(int32(out[n].Int())))
 
 			default:
 				return nil, xerrors.Errorf("only String and Int32 parameters can be used for callback functions")
