@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/nicholasjackson/wasp/engine/logger"
 	"github.com/wasmerio/wasmer-go/wasmer"
@@ -36,6 +37,19 @@ func New(log *logger.Wrapper) *Wasm {
 	return w
 }
 
+type ImportNotFoundError struct {
+	Name   string
+	Module string
+}
+
+func (i ImportNotFoundError) Error() string {
+	return fmt.Sprintf(
+		"plugin imports the function %s from the namespace %s but no callback is defined for this import",
+		i.Name,
+		i.Module,
+	)
+}
+
 /*
 	RegisterPlugin registers a plugin with the given parameters with the engine
 
@@ -55,6 +69,28 @@ func (w *Wasm) RegisterPlugin(name, pluginPath string, pluginConfig *PluginConfi
 	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
 		return xerrors.Errorf("unable to instantiate WASM module: %w", err)
+	}
+
+	// validate that there are callbacks for all the imported functions
+	for _, i := range module.Imports() {
+		// wasi functions that are provided by the system are loaded in the wasi_... namespaces
+		if !strings.HasPrefix(i.Module(), "wasi_") {
+			if pluginConfig == nil {
+				return ImportNotFoundError{i.Name(), i.Module()}
+			}
+
+			if pluginConfig.Callbacks == nil {
+				return ImportNotFoundError{i.Name(), i.Module()}
+			}
+
+			if m, ok := pluginConfig.Callbacks.callbackFunctions[i.Module()]; ok {
+				if _, ok := m[i.Name()]; !ok {
+					return ImportNotFoundError{i.Name(), i.Module()}
+				}
+			} else {
+				return ImportNotFoundError{i.Name(), i.Module()}
+			}
+		}
 	}
 
 	p := &plugin{

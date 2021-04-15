@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	"github.com/nicholasjackson/wasp/engine/logger"
@@ -39,6 +40,19 @@ func (i *Instance) Remove() error {
 	return nil
 }
 
+type FunctionNotFoundError struct {
+	Name string
+	Err  error
+}
+
+func (f FunctionNotFoundError) Error() string {
+	return fmt.Sprintf(
+		"function %s, does not exist in plugin: %s",
+		f.Name,
+		f.Err,
+	)
+}
+
 // CallFunction in the Wasm module with the given parameters
 // The response from the function will automatically be cast into the type specified
 // by outputParam. In the instance that outputParam is a complex type that is returned
@@ -47,7 +61,7 @@ func (i *Instance) Remove() error {
 func (i *Instance) CallFunction(name string, outputParam interface{}, inputParams ...interface{}) error {
 	f, err := i.instance.Exports.GetFunction(name)
 	if err != nil {
-		return xerrors.Errorf("unable to find the function %s in the Wasm module: %w", err)
+		return FunctionNotFoundError{name, err}
 	}
 
 	// ensure the deallocation of memory is always gets called, pass a reference as the slice is not yet populated
