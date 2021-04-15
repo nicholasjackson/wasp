@@ -70,9 +70,6 @@ func createCallback(i *Instance, ns, name string, callFunc interface{}) (*wasmer
 
 		i.log.Debug("Callback called", "namespace", ns, "name", name, "args", args)
 
-		// ensure the deallocation of memory is always gets called, pass a reference as the slice is not yet populated
-		defer i.freeAllocatedMemory()
-
 		// build the parameter list
 		inParams := []reflect.Value{}
 		for n := 0; n < callback.NumIn(); n++ {
