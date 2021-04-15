@@ -13,8 +13,11 @@ func setupEngine(module string, b *testing.B) *Instance {
 
 	cb := &Callbacks{}
 	cb.AddCallback("env", "call_me", callMe)
+	conf := &PluginConfig{
+		Callbacks: cb,
+	}
 
-	err := e.RegisterPlugin("test", module, cb, nil)
+	err := e.RegisterPlugin("test", module, conf)
 	if err != nil {
 		b.Error(err)
 		b.Fail()
@@ -29,51 +32,75 @@ func setupEngine(module string, b *testing.B) *Instance {
 	return inst
 }
 
-func callSumFunction(inst *Instance, b *testing.B) {
+func callIntFunction(inst *Instance, b *testing.B) {
 	var outInt int32
 
-	err := inst.CallFunction("sum", &outInt, 3, 2)
+	err := inst.CallFunction("int_func", &outInt, 3, 2)
 	if err != nil {
 		b.Error(err)
 		b.Fail()
 	}
 }
 
-func BenchmarkSumGoWASM(b *testing.B) {
-	e := setupEngine("../example/plugins/go/module.wasm", b)
+func callStringFunction(inst *Instance, b *testing.B) {
+	var outString string
 
-	for n := 0; n < b.N; n++ {
-		callSumFunction(e, b)
+	err := inst.CallFunction("string_func", &outString, "Nic")
+	if err != nil {
+		b.Error(err)
+		b.FailNow()
 	}
 }
 
-func BenchmarkSumRustWASM(b *testing.B) {
-	e := setupEngine("../example/plugins/rust/target/wasm32-wasi/release/module.wasi.wasm", b)
+func BenchmarkIntFuncGoWASM(b *testing.B) {
+	i := setupEngine("../test_fixtures/go/no_imports/module.wasm", b)
 
 	for n := 0; n < b.N; n++ {
-		callSumFunction(e, b)
+		callIntFunction(i, b)
 	}
 }
 
-func BenchmarkSumTypeScriptWASM(b *testing.B) {
-	e := setupEngine("../example/plugins/assemblyscript/build/optimized.wasm", b)
+func BenchmarkStringFuncGoWASM(b *testing.B) {
+	i := setupEngine("../test_fixtures/go/no_imports/module.wasm", b)
 
 	for n := 0; n < b.N; n++ {
-		callSumFunction(e, b)
+		callStringFunction(i, b)
 	}
 }
 
-func BenchmarkSumCWASM(b *testing.B) {
-	e := setupEngine("../example/plugins/c/a.out.wasm", b)
+//func BenchmarkSumRustWASM(b *testing.B) {
+//	e := setupEngine("../example/plugins/rust/target/wasm32-wasi/release/module.wasi.wasm", b)
+//
+//	for n := 0; n < b.N; n++ {
+//		callSumFunction(e, b)
+//	}
+//}
+//
+//func BenchmarkSumTypeScriptWASM(b *testing.B) {
+//	e := setupEngine("../example/plugins/assemblyscript/build/optimized.wasm", b)
+//
+//	for n := 0; n < b.N; n++ {
+//		callSumFunction(e, b)
+//	}
+//}
+//
+//func BenchmarkSumCWASM(b *testing.B) {
+//	e := setupEngine("../example/plugins/c/a.out.wasm", b)
+//
+//	for n := 0; n < b.N; n++ {
+//		callSumFunction(e, b)
+//	}
+//}
 
+func BenchmarkIntFuncNative(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		callSumFunction(e, b)
+		intNative(34, n)
 	}
 }
 
-func BenchmarkSumNative(b *testing.B) {
+func BenchmarkStringFuncNative(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		sumNative(34, n)
+		stringNative("Nic")
 	}
 }
 
@@ -84,6 +111,10 @@ func callMe(in string) string {
 	return out
 }
 
-func sumNative(a, b int) int {
+func intNative(a, b int) int {
 	return a * b
+}
+
+func stringNative(in string) string {
+	return "Hello " + in
 }

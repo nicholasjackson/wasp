@@ -2,11 +2,11 @@ package engine
 
 import (
 	"encoding/binary"
-	"fmt"
 	"time"
 
 	"github.com/nicholasjackson/wasp/engine/logger"
 	"github.com/wasmerio/wasmer-go/wasmer"
+	"golang.org/x/xerrors"
 )
 
 // Instance represents an instance of a plugin
@@ -15,8 +15,23 @@ type Instance struct {
 	importObject      *wasmer.ImportObject
 	instanceFunctions *instanceFunctions
 	log               *logger.Wrapper
+
 	// Volume is the name of the instance specific volume
 	Volume string
+
+	// map of the address and size of any memory
+	// allocated by this instance
+	allocatedMemory map[int32]int32
+}
+
+func NewInstance() *Instance {
+	// allocatedMemory collects any pointers created by passing or receiving complex
+	// types from the function.
+	//
+	// all the pointers in this collection should be deallocated once the function call has completed to
+	// avoid leaking memory in the instance
+	am := map[int32]int32{}
+	return &Instance{allocatedMemory: am}
 }
 
 // Remove the instance and cleanup any volumes
@@ -32,8 +47,11 @@ func (i *Instance) Remove() error {
 func (i *Instance) CallFunction(name string, outputParam interface{}, inputParams ...interface{}) error {
 	f, err := i.instance.Exports.GetFunction(name)
 	if err != nil {
-		return fmt.Errorf("Unable to export the WASM function, error: %s", err)
+		return xerrors.Errorf("unable to find the function %s in the Wasm module: %w", err)
 	}
+
+	// ensure the deallocation of memory is always gets called, pass a reference as the slice is not yet populated
+	defer i.freeAllocatedMemory()
 
 	// parse the input parameters, if we have a string we need to set that in the Wasm modules
 	// memory and pass a pointer to the function instead
@@ -45,8 +63,9 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 			// the string to it
 			addr, err := i.setStringInMemory(p.(string))
 			if err != nil {
-				return fmt.Errorf("Unable to set string in module memory, err: %s", err)
+				return xerrors.Errorf("unable to set string in module memory: %w", err)
 			}
+
 			processedParams[n] = addr
 
 			i.log.Debug(
@@ -64,6 +83,7 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 			if err != nil {
 				return err
 			}
+
 			processedParams[n] = addr
 
 		default:
@@ -82,7 +102,7 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 	resp, err := f(processedParams...)
 	if err != nil {
 		i.log.Error("Calling function failed", "name", name, "error", err)
-		return err
+		return xerrors.Errorf("unable to call function: %w", err)
 	}
 
 	i.log.Debug(
@@ -97,7 +117,7 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 	case *string:
 		s, err := i.getStringFromMemory(resp.(int32))
 		if err != nil {
-			return err
+			return xerrors.Errorf("unable to get string from instance memory: %w", err)
 		}
 
 		*outputParam.(*string) = s
@@ -113,7 +133,7 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 	case *int32:
 		*outputParam.(*int32) = resp.(int32)
 	default:
-		return fmt.Errorf("output parameters can only be of type *int32 or *string")
+		return xerrors.Errorf("output parameters can only be of type *int32 or *string")
 	}
 
 	return nil
@@ -123,14 +143,20 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 // it first allocates the memory by calling the modules helper function
 // allocate and then copies the string.
 //
+// setStringInMemory allocates memory in the Wasm module, this memory needs to be manually freed
+// by calling the Wasm modules deallocate with the ptr returned by this function.
+//
 // Note: Strings are copied as a null terminating string to give compatibility with
 // C strings.
 func (i *Instance) setStringInMemory(s string) (int32, error) {
 	size := len(s) + 1 // allocate 1 more byte than the string size for the null terminator
 	addr, err := i.instanceFunctions.allocate(int32(size))
 	if err != nil {
-		return 0, fmt.Errorf("Unable to allocate memory in wasm module, err: %s", err)
+		return 0, xerrors.Errorf("unable to allocate memory in wasm module: %w", err)
 	}
+
+	// add the allocated memory to the collection so that we can deallocate it later
+	i.allocatedMemory[addr] = int32(size)
 
 	i.log.Debug(
 		"Allocated memory in host",
@@ -140,7 +166,12 @@ func (i *Instance) setStringInMemory(s string) (int32, error) {
 	// write the string to the memory
 	m, err := i.instance.Exports.GetMemory("memory")
 	if err != nil {
-		panic(err)
+		return 0, xerrors.Errorf("unable to read Wasm module memory, ensure the Wasm module exports the memory named 'memory': %w", err)
+	}
+
+	// check the memory is big enough to store the string we want
+	if m.DataSize() < uint(addr)+uint(size) {
+		return 0, xerrors.Errorf("unable to write string to memory, memory is not large enough to contain string")
 	}
 
 	for n, c := range s {
@@ -158,14 +189,22 @@ func (i *Instance) setStringInMemory(s string) (int32, error) {
 func (i *Instance) getStringFromMemory(addr int32) (string, error) {
 	m, err := i.instance.Exports.GetMemory("memory")
 	if err != nil {
-		panic(err)
+		return "", xerrors.Errorf("unable to read Wasm module memory, ensure the Wasm module exports the memory named 'memory': %w", err)
 	}
 
 	//get the size of the string
 	ss, err := i.instanceFunctions.getStringSize(addr)
 	if err != nil {
-		return "", err
+		return "", xerrors.Errorf("unable to get the size for the string at address: %d, from the Wasm module: %w", addr, err)
 	}
+
+	// check the memory is big enough to read the string we want
+	if len(m.Data()) < int(addr+ss) {
+		return "", xerrors.Errorf("Unable to read string from memory, memory is not large enough to contain string")
+	}
+
+	// add the allocated memory to the collection so that we can deallocate it later
+	i.allocatedMemory[addr] = int32(ss)
 
 	s := string(m.Data()[addr : addr+ss])
 
@@ -190,6 +229,9 @@ func (i *Instance) setBytesInMemory(data []byte) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	// add the allocated memory to the collection so that we can deallocate it later
+	i.allocatedMemory[addr] = int32(size)
 
 	i.log.Debug(
 		"Allocated memory in host",
@@ -224,6 +266,9 @@ func (i *Instance) getBytesFromMemory(addr int32) ([]byte, error) {
 	//get the size of the data from the first 4 bytes
 	byteLen := binary.LittleEndian.Uint32(m.Data()[addr:])
 
+	// add the allocated memory to the collection so that we can deallocate it later
+	i.allocatedMemory[addr] = int32(byteLen + 4)
+
 	// copy the data
 	data := make([]byte, byteLen)
 	copy(data, m.Data()[addr+4:uint32(addr)+4+byteLen])
@@ -235,4 +280,29 @@ func (i *Instance) getBytesFromMemory(addr int32) ([]byte, error) {
 		"result", data)
 
 	return data, nil
+}
+
+// freeAllocatedMemory frees any memory that has been created in the instance
+// for passing complex types between the host and Wasm module
+func (i *Instance) freeAllocatedMemory() {
+	for addr, size := range i.allocatedMemory {
+		err := i.instanceFunctions.deallocate(addr, size)
+		if err != nil {
+			i.log.Error(
+				"Unable to deallocate memory, potential memory leak",
+				"addr", addr,
+				"size", size,
+				"error", err,
+			)
+		}
+
+		i.log.Debug(
+			"Deallocated module instance memory",
+			"addr", addr,
+			"size", size,
+		)
+	}
+
+	// clear the cache
+	i.allocatedMemory = map[int32]int32{}
 }

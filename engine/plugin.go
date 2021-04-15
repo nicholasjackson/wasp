@@ -13,4 +13,7 @@ type PluginConfig struct {
 	Environment map[string]string
 	// Volumes are globally writable volumes for the module instances
 	Volumes map[string]string
+
+	// Callbacks contains functions that can be imported by the plugin
+	Callbacks *Callbacks
 }

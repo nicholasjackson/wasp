@@ -50,7 +50,10 @@ func (w *Callbacks) addCallbacks(i *Instance, store *wasmer.Store, log *logger.W
 				wasmer.NewFunctionType(wasmer.NewValueTypes(inParams...), wasmer.NewValueTypes(outParams...)),
 				func(args []wasmer.Value) ([]wasmer.Value, error) {
 
-					log.Debug("Callback called")
+					log.Debug("Callback called", "namespace", ns, "name", name)
+
+					// ensure the deallocation of memory is always gets called, pass a reference as the slice is not yet populated
+					defer i.freeAllocatedMemory()
 
 					// build the parameter list
 					inParams := []reflect.Value{}

@@ -15,9 +15,12 @@ type Wasm struct {
 	plugins map[string]*plugin
 }
 
-// New creates a new instance of the engine, it takes a single parameter
-// logger.Wrapper is used by the engine to log output.
-// To create an engine without logging pass nil to the New function
+/*
+	New creates a new instance of the engine, it takes a single parameter
+	logger.Wrapper that is used by the engine to log output.
+
+	To create an engine with logging disabled, pass nil to the New function
+*/
 func New(log *logger.Wrapper) *Wasm {
 	if log == nil {
 		// create a nil logger
@@ -33,8 +36,17 @@ func New(log *logger.Wrapper) *Wasm {
 	return w
 }
 
-func (w *Wasm) RegisterPlugin(name, path string, callbacks *Callbacks, pluginConfig *PluginConfig) error {
-	wasmBytes, err := ioutil.ReadFile(path)
+/*
+	RegisterPlugin registers a plugin with the given parameters with the engine
+
+	Parameters:
+		name: The name of the plugin as it will be registered with the engine
+		pluginPath: The path to the Wasm module that will be loaded
+		callbacks: A collection of functions that can be imported by the Wasm module
+		pluginConfig: Additional configuration for the engine such as environment variables and volumes
+*/
+func (w *Wasm) RegisterPlugin(name, pluginPath string, pluginConfig *PluginConfig) error {
+	wasmBytes, err := ioutil.ReadFile(pluginPath)
 	if err != nil {
 		return xerrors.Errorf("unable to load WASM module: %w", err)
 	}
@@ -46,8 +58,11 @@ func (w *Wasm) RegisterPlugin(name, path string, callbacks *Callbacks, pluginCon
 	}
 
 	p := &plugin{
-		module:    module,
-		callbacks: callbacks,
+		module: module,
+	}
+
+	if pluginConfig != nil {
+		p.callbacks = pluginConfig.Callbacks
 	}
 
 	w.plugins[name] = p
@@ -55,6 +70,16 @@ func (w *Wasm) RegisterPlugin(name, path string, callbacks *Callbacks, pluginCon
 	return nil
 }
 
+/*
+	GetInstance retrieves an instance of a plugin that can be used for calling functions .The instance
+	returned has its own memory and resources.
+
+	Parameters:
+		name: The name of the plugin to retrieve an instance for
+		workspaceDir: Optional workspace directory to mount for the plugin, workspace directories can be
+									used to share filesystem data between groups of plugins.
+									this directory is mounted to /workspace inside the Wasm module.
+*/
 func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 	// find the plugin
 	p, ok := w.plugins[name]
@@ -74,7 +99,7 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 		return nil, err
 	}
 
-	inst := &Instance{}
+	inst := NewInstance()
 	inst.importObject = io
 
 	// Add the default imports

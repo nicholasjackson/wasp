@@ -31,7 +31,9 @@ func (i *instanceFunctions) getStringSize(addr int32) (int32, error) {
 	return r.(int32), nil
 }
 
-// Allocate
+// Allocate memory in the Wasm module
+// returns a pointer to the location of allocated memory that can be written to
+// using the instances memory collection.
 func (i *instanceFunctions) allocate(size int32) (int32, error) {
 	allocate, err := i.inst.instance.Exports.GetFunction("allocate")
 	if err != nil {
@@ -45,4 +47,18 @@ func (i *instanceFunctions) allocate(size int32) (int32, error) {
 
 	return r.(int32), nil
 
+}
+
+func (i *instanceFunctions) deallocate(addr int32, size int32) error {
+	deallocate, err := i.inst.instance.Exports.GetFunction("deallocate")
+	if err != nil {
+		return xerrors.Errorf("unable to get deallocate function from module, ensure the Wasm module implements the default ABI: %w", err)
+	}
+
+	_, err = deallocate(addr, size)
+	if err != nil {
+		return xerrors.Errorf("error calling deallocate addr %d: %w", addr, err)
+	}
+
+	return nil
 }

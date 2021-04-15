@@ -14,7 +14,7 @@ func ExampleNew() {
 	e := New(wl)
 
 	// Register a plugin called test
-	err := e.RegisterPlugin("test", "./path_to_plugin.wasm", nil, nil)
+	err := e.RegisterPlugin("test", "./path_to_plugin.wasm", nil)
 	if err != nil {
 		panic(err)
 	}
