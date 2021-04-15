@@ -23,10 +23,14 @@ func hello(in abi.WasmString) abi.WasmString {
 	// get the string from the memory pointer
 	s := in.String()
 
-	out := abi.WasmString(0)
-	out.Copy("Hello " + s)
+	out := abi.String("Hello " + s)
 
 	return out
+}
+
+//go:export fail
+func fail() {
+	abi.Error("Ooops")
 }
 
 //go:export reverse
@@ -55,8 +59,7 @@ func callback() abi.WasmString {
 	fmt.Println("Running Function")
 
 	// get the string from the memory pointer
-	name := abi.WasmString(0)
-	name.Copy("Nic")
+	name := abi.String("Nic")
 
 	s := callMe(name)
 

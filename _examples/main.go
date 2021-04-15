@@ -77,12 +77,19 @@ func main() {
 	}
 	log.Info("Response from function", "name", "reverse", "result", outData)
 
+	// test a callback
 	err = i.CallFunction("callback", &outStr)
 	if err != nil {
 		log.Error("Error calling function", "name", "callback", "error", err)
 		os.Exit(1)
 	}
 	log.Info("Response from function", "name", "callback", "result", outStr)
+
+	// test catching an error
+	err = i.CallFunction("fail", nil)
+	if err != nil {
+		log.Error("Error calling function", "name", "fail", "error", err)
+	}
 }
 
 func callMe(in string) string {

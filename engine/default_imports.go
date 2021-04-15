@@ -1,24 +1,24 @@
 package engine
 
-import (
-	"github.com/wasmerio/wasmer-go/wasmer"
-)
+func (w *Wasm) getDefaultCallbacks(i *Instance) *Callbacks {
+	cb := &Callbacks{}
 
-func (w *Wasm) addDefaults(i *Instance) {
-
-	i.importObject.Register(
+	cb.AddCallback(
 		"env",
-		map[string]wasmer.IntoExtern{
-			"abort": wasmer.NewFunction(
-				w.store,
-				wasmer.NewFunctionType(
-					wasmer.NewValueTypes(wasmer.I32, wasmer.I32, wasmer.I32, wasmer.I32),
-					wasmer.NewValueTypes(),
-				),
-				func(args []wasmer.Value) ([]wasmer.Value, error) {
-					return []wasmer.Value{}, nil
-				},
-			),
+		"abort",
+		func(a, b, c, d int32) {
+			i.log.Debug("abort called")
 		},
 	)
+
+	cb.AddCallback(
+		"env",
+		"raise_error",
+		func(err string) {
+			i.log.Debug("Error raised by plugin", "error", err)
+			i.setError(err)
+		},
+	)
+
+	return cb
 }

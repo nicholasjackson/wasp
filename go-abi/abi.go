@@ -69,6 +69,14 @@ func (w *WasmString) String() string {
 	return string(sbuf)
 }
 
+// String is a helper that returns a WasmString from a string
+func String(in string) WasmString {
+	ws := WasmString(0)
+	ws.Copy(in)
+
+	return ws
+}
+
 /* DEFAULT ABI */
 
 // allocate memory that can be written to by the Wasm host
@@ -98,6 +106,19 @@ func deallocate(ptr uintptr, size int32) {
 func getStringSize(a uintptr) int {
 	char := (*C.char)(unsafe.Pointer(uintptr(a)))
 	return int(C.strlen(char))
+}
+
+// RaiseError can be called to pass an error back to the host
+//
+//export raise_error
+func raiseError(in WasmString)
+
+func Error(in string) {
+	// something bad happened
+	err := WasmString(0)
+	err.Copy(in)
+
+	raiseError(err)
 }
 
 // Default workspace directory if available

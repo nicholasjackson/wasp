@@ -65,6 +65,13 @@ func (w *Wasm) RegisterPlugin(name, pluginPath string, pluginConfig *PluginConfi
 		return xerrors.Errorf("unable to load WASM module: %w", err)
 	}
 
+	// always create a config if one does not exist
+	if pluginConfig == nil {
+		pluginConfig = &PluginConfig{
+			Callbacks: &Callbacks{},
+		}
+	}
+
 	// Compile the module
 	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
@@ -74,7 +81,11 @@ func (w *Wasm) RegisterPlugin(name, pluginPath string, pluginConfig *PluginConfi
 	// validate that there are callbacks for all the imported functions
 	for _, i := range module.Imports() {
 		// wasi functions that are provided by the system are loaded in the wasi_... namespaces
-		if !strings.HasPrefix(i.Module(), "wasi_") {
+		if strings.HasPrefix(i.Module(), "wasi_") ||
+			(i.Module() == "env" && i.Name() == "raise_error") ||
+			(i.Module() == "env" && i.Name() == "abort") {
+			// default import
+		} else {
 			if pluginConfig == nil {
 				return ImportNotFoundError{i.Name(), i.Module()}
 			}
@@ -149,12 +160,12 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 	inst.importObject = io
 
 	// Add the default imports
-	w.addDefaults(inst)
+	defaultCallbacks := w.getDefaultCallbacks(inst)
 
-	// register any callbacks
-	if p.config != nil && p.config.Callbacks != nil {
-		p.config.Callbacks.addCallbacks(inst, w.store, w.log)
-	}
+	// add the default callbacks to our user defined list
+	p.config.Callbacks.merge(defaultCallbacks)
+
+	p.config.Callbacks.addCallbacks(inst, w.store, w.log)
 
 	// Create the new instance of the module
 	instance, err := wasmer.NewInstance(p.module, io)

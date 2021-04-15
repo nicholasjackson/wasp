@@ -23,6 +23,17 @@ type Instance struct {
 	// map of the address and size of any memory
 	// allocated by this instance
 	allocatedMemory map[int32]int32
+
+	// last error is the last error raised by the system
+	lastError error
+}
+
+func (i *Instance) setError(err string) {
+	i.lastError = fmt.Errorf(err)
+}
+
+func (i *Instance) getError() error {
+	return i.lastError
 }
 
 func NewInstance() *Instance {
@@ -63,6 +74,8 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 	if err != nil {
 		return FunctionNotFoundError{name, err}
 	}
+
+	i.lastError = nil
 
 	// ensure the deallocation of memory is always gets called, pass a reference as the slice is not yet populated
 	defer i.freeAllocatedMemory()
@@ -119,6 +132,11 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 		return xerrors.Errorf("unable to call function: %w", err)
 	}
 
+	// check for errors
+	if err := i.getError(); err != nil {
+		return err
+	}
+
 	i.log.Debug(
 		"Called function",
 		"name", name,
@@ -146,6 +164,8 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 
 	case *int32:
 		*outputParam.(*int32) = resp.(int32)
+	case nil:
+
 	default:
 		return xerrors.Errorf("output parameters can only be of type *int32 or *string")
 	}
