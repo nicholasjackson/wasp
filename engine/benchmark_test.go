@@ -53,7 +53,7 @@ func callStringFunction(inst Instance, b *testing.B) {
 }
 
 func BenchmarkIntFuncGoWASM(b *testing.B) {
-	i := setupEngine("../test_fixtures/go/no_imports/module.wasm", b)
+	i := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
 
 	for n := 0; n < b.N; n++ {
 		callIntFunction(i, b)
@@ -61,7 +61,7 @@ func BenchmarkIntFuncGoWASM(b *testing.B) {
 }
 
 func BenchmarkStringFuncGoWASM(b *testing.B) {
-	i := setupEngine("../test_fixtures/go/no_imports/module.wasm", b)
+	i := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
 
 	for n := 0; n < b.N; n++ {
 		callStringFunction(i, b)

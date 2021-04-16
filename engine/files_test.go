@@ -38,7 +38,7 @@ func testSetupEngine(t *testing.T, module string, conf *PluginConfig) (Instance,
 
 func TestWritesToWorkspaceDirectory(t *testing.T) {
 	t.Skip()
-	i, d := testSetupEngine(t, "../test_fixtures/rust/no_imports/module.wasm", nil)
+	i, d := testSetupEngine(t, "../_test_fixtures/rust/no_imports/module.wasm", nil)
 	fmt.Println(d)
 
 	ioutil.WriteFile(filepath.Join(d, "/in.txt"), []byte("hello"), os.ModePerm)

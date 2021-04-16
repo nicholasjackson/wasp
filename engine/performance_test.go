@@ -44,7 +44,7 @@ func TestCallsFunctionWithStringParamsMultipleTimes(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	//inst := perfSetupEngine(t, "../test_fixtures/go/string_func/module.wasm", nil)
-	inst := perfSetupEngine(t, "../test_fixtures/go/no_imports/module.wasm", nil)
+	inst := perfSetupEngine(t, "../_test_fixtures/go/no_imports/module.wasm", nil)
 
 	n := 10000
 	for i := 0; i < n; i++ {
@@ -80,7 +80,7 @@ func TestCallsFunctionWithIntParamsMultipleTimes(t *testing.T) {
 	// check no goroutines are running after the test
 	defer goleak.VerifyNone(t)
 
-	inst := perfSetupEngine(t, "../test_fixtures/go/no_imports/module.wasm", nil)
+	inst := perfSetupEngine(t, "../_test_fixtures/go/no_imports/module.wasm", nil)
 
 	n := 10000
 	for i := 0; i < n; i++ {
