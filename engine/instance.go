@@ -10,15 +10,48 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// Instance represents an instance of a plugin
-type Instance struct {
-	instance          *wasmer.Instance
-	importObject      *wasmer.ImportObject
-	instanceFunctions *instanceFunctions
-	log               *logger.Wrapper
+type Instance interface {
+	CallFunction(string, interface{}, ...interface{}) error
+	Remove() error
+	// private
+	getImportObject() importObject
+	setError(string)
+	getError() error
+	setStringInMemory(string) (int32, error)
+	getStringFromMemory(int32) (string, error)
+	setBytesInMemory([]byte) (int32, error)
+	getBytesFromMemory(int32) ([]byte, error)
+	freeAllocatedMemory()
+	// instance function ABI
+	getStringSize(addr int32) (int32, error)
+	allocate(size int32) (int32, error)
+	deallocate(addr int32, size int32) error
+}
+
+// FunctionNotFoundError is returned by CallFunction when a
+// function does not exist in the Wasm module
+type FunctionNotFoundError struct {
+	Name string
+	Err  error
+}
+
+// Error implements the error interface
+func (f FunctionNotFoundError) Error() string {
+	return fmt.Sprintf(
+		"function %s, does not exist in plugin: %s",
+		f.Name,
+		f.Err,
+	)
+}
+
+// WasmerInstance represents a concrete implementation of a plugin instance
+type wasmerInstance struct {
+	instance     *wasmer.Instance
+	importObject *wasmer.ImportObject
+	log          *logger.Wrapper
 
 	// Volume is the name of the instance specific volume
-	Volume string
+	volume string
 
 	// map of the address and size of any memory
 	// allocated by this instance
@@ -28,40 +61,16 @@ type Instance struct {
 	lastError error
 }
 
-func (i *Instance) setError(err string) {
-	i.lastError = fmt.Errorf(err)
-}
+// newInstance creates a new Plugin instance
+func newInstance(io *wasmer.ImportObject) *wasmerInstance {
 
-func (i *Instance) getError() error {
-	return i.lastError
-}
-
-func NewInstance() *Instance {
 	// allocatedMemory collects any pointers created by passing or receiving complex
 	// types from the function.
 	//
 	// all the pointers in this collection should be deallocated once the function call has completed to
 	// avoid leaking memory in the instance
 	am := map[int32]int32{}
-	return &Instance{allocatedMemory: am}
-}
-
-// Remove the instance and cleanup any volumes
-func (i *Instance) Remove() error {
-	return nil
-}
-
-type FunctionNotFoundError struct {
-	Name string
-	Err  error
-}
-
-func (f FunctionNotFoundError) Error() string {
-	return fmt.Sprintf(
-		"function %s, does not exist in plugin: %s",
-		f.Name,
-		f.Err,
-	)
+	return &wasmerInstance{allocatedMemory: am, importObject: io}
 }
 
 // CallFunction in the Wasm module with the given parameters
@@ -69,7 +78,7 @@ func (f FunctionNotFoundError) Error() string {
 // by outputParam. In the instance that outputParam is a complex type that is returned
 // as a pointer from the WASMFunction CallFunction reads the WasmModule memory and
 // sets outputParam
-func (i *Instance) CallFunction(name string, outputParam interface{}, inputParams ...interface{}) error {
+func (i *wasmerInstance) CallFunction(name string, outputParam interface{}, inputParams ...interface{}) error {
 	f, err := i.instance.Exports.GetFunction(name)
 	if err != nil {
 		return FunctionNotFoundError{name, err}
@@ -173,6 +182,23 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 	return nil
 }
 
+// Remove the instance and cleanup any volumes
+func (i *wasmerInstance) Remove() error {
+	return nil
+}
+
+func (i *wasmerInstance) getImportObject() importObject {
+	return i.importObject
+}
+
+func (i *wasmerInstance) setError(err string) {
+	i.lastError = fmt.Errorf(err)
+}
+
+func (i *wasmerInstance) getError() error {
+	return i.lastError
+}
+
 // setStringInMemory copies a Go string to the Wasm modules linear memory
 // it first allocates the memory by calling the modules helper function
 // allocate and then copies the string.
@@ -182,9 +208,9 @@ func (i *Instance) CallFunction(name string, outputParam interface{}, inputParam
 //
 // Note: Strings are copied as a null terminating string to give compatibility with
 // C strings.
-func (i *Instance) setStringInMemory(s string) (int32, error) {
+func (i *wasmerInstance) setStringInMemory(s string) (int32, error) {
 	size := len(s) + 1 // allocate 1 more byte than the string size for the null terminator
-	addr, err := i.instanceFunctions.allocate(int32(size))
+	addr, err := i.allocate(int32(size))
 	if err != nil {
 		return 0, xerrors.Errorf("unable to allocate memory in wasm module: %w", err)
 	}
@@ -220,14 +246,14 @@ func (i *Instance) setStringInMemory(s string) (int32, error) {
 
 // getStringFromMemory returns a the string stored at the Wasm modules
 // memory address addr
-func (i *Instance) getStringFromMemory(addr int32) (string, error) {
+func (i *wasmerInstance) getStringFromMemory(addr int32) (string, error) {
 	m, err := i.instance.Exports.GetMemory("memory")
 	if err != nil {
 		return "", xerrors.Errorf("unable to read Wasm module memory, ensure the Wasm module exports the memory named 'memory': %w", err)
 	}
 
 	//get the size of the string
-	ss, err := i.instanceFunctions.getStringSize(addr)
+	ss, err := i.getStringSize(addr)
 	if err != nil {
 		return "", xerrors.Errorf("unable to get the size for the string at address: %d, from the Wasm module: %w", addr, err)
 	}
@@ -257,9 +283,9 @@ func (i *Instance) getStringFromMemory(addr int32) (string, error) {
 //
 // Note: The array created in the destination Wasm module always has the
 // length of the array stored at the first 4 bytes as a uint32
-func (i *Instance) setBytesInMemory(data []byte) (int32, error) {
+func (i *wasmerInstance) setBytesInMemory(data []byte) (int32, error) {
 	size := len(data) + 4 // allocate 4 more bytes than the byte size as the size is encoded as a uint32 at the begining of the structure
-	addr, err := i.instanceFunctions.allocate(int32(size))
+	addr, err := i.allocate(int32(size))
 	if err != nil {
 		return 0, err
 	}
@@ -291,7 +317,7 @@ func (i *Instance) setBytesInMemory(data []byte) (int32, error) {
 // into a Go byte slice. The array stored in the Wasm modules memory
 // must have the length of the array encoded into the first 4 bytes
 // encoded as a little endian uint32.
-func (i *Instance) getBytesFromMemory(addr int32) ([]byte, error) {
+func (i *wasmerInstance) getBytesFromMemory(addr int32) ([]byte, error) {
 	m, err := i.instance.Exports.GetMemory("memory")
 	if err != nil {
 		panic(err)
@@ -318,9 +344,9 @@ func (i *Instance) getBytesFromMemory(addr int32) ([]byte, error) {
 
 // freeAllocatedMemory frees any memory that has been created in the instance
 // for passing complex types between the host and Wasm module
-func (i *Instance) freeAllocatedMemory() {
+func (i *wasmerInstance) freeAllocatedMemory() {
 	for addr, size := range i.allocatedMemory {
-		err := i.instanceFunctions.deallocate(addr, size)
+		err := i.deallocate(addr, size)
 		if err != nil {
 			i.log.Error(
 				"Unable to deallocate memory, potential memory leak",

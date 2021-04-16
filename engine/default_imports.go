@@ -1,13 +1,15 @@
 package engine
 
-func (w *Wasm) getDefaultCallbacks(i *Instance) *Callbacks {
+import "github.com/nicholasjackson/wasp/engine/logger"
+
+func (w *Wasm) getDefaultCallbacks(i Instance, l *logger.Wrapper) *Callbacks {
 	cb := &Callbacks{}
 
 	cb.AddCallback(
 		"env",
 		"abort",
 		func(a, b, c, d int32) {
-			i.log.Debug("abort called")
+			l.Debug("abort called")
 		},
 	)
 
@@ -15,7 +17,7 @@ func (w *Wasm) getDefaultCallbacks(i *Instance) *Callbacks {
 		"env",
 		"raise_error",
 		func(err string) {
-			i.log.Debug("Error raised by plugin", "error", err)
+			l.Debug("Error raised by plugin", "error", err)
 			i.setError(err)
 		},
 	)

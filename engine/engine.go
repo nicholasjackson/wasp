@@ -124,7 +124,7 @@ func (w *Wasm) RegisterPlugin(name, pluginPath string, pluginConfig *PluginConfi
 									used to share filesystem data between groups of plugins.
 									this directory is mounted to /workspace inside the Wasm module.
 */
-func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
+func (w *Wasm) GetInstance(name, workspaceDir string) (Instance, error) {
 	// find the plugin
 	p, ok := w.plugins[name]
 	if !ok {
@@ -156,30 +156,23 @@ func (w *Wasm) GetInstance(name, workspaceDir string) (*Instance, error) {
 		return nil, err
 	}
 
-	inst := NewInstance()
-	inst.importObject = io
+	inst := newInstance(io)
 
 	// Add the default imports
-	defaultCallbacks := w.getDefaultCallbacks(inst)
+	defaultCallbacks := w.getDefaultCallbacks(inst, w.log)
 
 	// add the default callbacks to our user defined list
 	p.config.Callbacks.merge(defaultCallbacks)
 
+	// Add the callbacks to the instance
 	p.config.Callbacks.addCallbacks(inst, w.store, w.log)
 
-	// Create the new instance of the module
+	// Create a new instance of the module
 	instance, err := wasmer.NewInstance(p.module, io)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create a new instance of the plugin: %w", err)
 	}
 
-	// Setup the default functions that are required for memory manipulation operations
-	wi := NewInstanceFunctions(inst)
-	if err != nil {
-		return nil, fmt.Errorf("unable to import default functions, ensure that the Wasm module correctly imports the base ABI: %w", err)
-	}
-
-	inst.instanceFunctions = wi
 	inst.instance = instance
 	inst.log = w.log
 

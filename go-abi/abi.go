@@ -111,14 +111,14 @@ func getStringSize(a uintptr) int {
 // RaiseError can be called to pass an error back to the host
 //
 //export raise_error
-func raiseError(in WasmString)
+func raise_error(in WasmString)
 
 func Error(in string) {
 	// something bad happened
 	err := WasmString(0)
 	err.Copy(in)
 
-	raiseError(err)
+	raise_error(err)
 }
 
 // Default workspace directory if available

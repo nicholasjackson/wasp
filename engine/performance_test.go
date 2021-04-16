@@ -12,7 +12,7 @@ import (
 	"runtime/pprof"
 )
 
-func perfSetupEngine(t *testing.T, module string, cb *Callbacks) *Instance {
+func perfSetupEngine(t *testing.T, module string, cb *Callbacks) Instance {
 	hl := hclog.NewNullLogger()
 	hl.SetLevel(hclog.Debug)
 

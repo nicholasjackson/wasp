@@ -35,22 +35,21 @@ func (c *Callbacks) merge(cb *Callbacks) {
 	}
 }
 
-func (c *Callbacks) addCallbacks(i *Instance, store *wasmer.Store, log *logger.Wrapper) {
+func (c *Callbacks) addCallbacks(i Instance, store *wasmer.Store, log *logger.Wrapper) {
 	for ns, fs := range c.callbackFunctions {
 		callbacks := map[string]wasmer.IntoExtern{}
 
 		for name, f := range fs {
-			ft, ff := createCallback(i, ns, name, f)
+			ft, ff := createCallback(i, log, ns, name, f)
 			callbacks[name] = wasmer.NewFunction(store, ft, ff)
 		}
 
-		i.importObject.Register(ns, callbacks)
+		i.getImportObject().Register(ns, callbacks)
 	}
 }
 
-func createCallback(i *Instance, ns, name string, callFunc interface{}) (*wasmer.FunctionType, func([]wasmer.Value) ([]wasmer.Value, error)) {
+func createCallback(i Instance, log *logger.Wrapper, ns, name string, callFunc interface{}) (*wasmer.FunctionType, func([]wasmer.Value) ([]wasmer.Value, error)) {
 	callback := reflect.TypeOf(callFunc)
-	callback.In(0)
 
 	inParams := []wasmer.ValueKind{}
 	for i := 0; i < callback.NumIn(); i++ {
@@ -68,7 +67,7 @@ func createCallback(i *Instance, ns, name string, callFunc interface{}) (*wasmer
 
 	ff := func(args []wasmer.Value) ([]wasmer.Value, error) {
 
-		i.log.Debug("Callback called", "namespace", ns, "name", name, "args", args)
+		log.Debug("Callback called", "namespace", ns, "name", name, "args", args)
 
 		// build the parameter list
 		inParams := []reflect.Value{}
@@ -95,7 +94,7 @@ func createCallback(i *Instance, ns, name string, callFunc interface{}) (*wasmer
 		f := reflect.ValueOf(callFunc)
 		out := f.Call(inParams)
 
-		i.log.Debug("Called callback function", "out", out)
+		log.Debug("Called callback function", "out", out)
 
 		// check returned parameters = expected
 		if len(out) != callback.NumOut() {

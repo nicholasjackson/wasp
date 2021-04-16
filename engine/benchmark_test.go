@@ -7,7 +7,7 @@ import (
 	"github.com/nicholasjackson/wasp/engine/logger"
 )
 
-func setupEngine(module string, b *testing.B) *Instance {
+func setupEngine(module string, b *testing.B) Instance {
 	log := logger.New(nil, nil, nil, nil)
 	e := New(log)
 
@@ -32,7 +32,7 @@ func setupEngine(module string, b *testing.B) *Instance {
 	return inst
 }
 
-func callIntFunction(inst *Instance, b *testing.B) {
+func callIntFunction(inst Instance, b *testing.B) {
 	var outInt int32
 
 	err := inst.CallFunction("int_func", &outInt, 3, 2)
@@ -42,7 +42,7 @@ func callIntFunction(inst *Instance, b *testing.B) {
 	}
 }
 
-func callStringFunction(inst *Instance, b *testing.B) {
+func callStringFunction(inst Instance, b *testing.B) {
 	var outString string
 
 	err := inst.CallFunction("string_func", &outString, "Nic")

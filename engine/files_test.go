@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testSetupEngine(t *testing.T, module string, conf *PluginConfig) (*Instance, string) {
+func testSetupEngine(t *testing.T, module string, conf *PluginConfig) (Instance, string) {
 	hl := hclog.Default()
 	hl.SetLevel(hclog.Debug)
 
