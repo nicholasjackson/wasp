@@ -1,6 +1,6 @@
-import "wasi"
-import { call_me } from "./plugins";
+import * as wasi from "as-wasi";
 
+import { call_me, raise_error } from "./plugins";
 
 function bytes_from_buffer(raw: ArrayBuffer): Int8Array {
   // the length of the data is stored in the buffer in the first 4 bytes we can discard this
@@ -22,9 +22,16 @@ function buffer_from_bytes(data: Int8Array): ArrayBuffer {
   return buffer;
 } 
 
-export function allocate(size: i32): Int8Array{
-  console.log("allocate " + size.toString());
-  return new Int8Array(size);
+export function allocate(size: i32): ArrayBuffer{
+  //Console.log("allocate");
+  return new ArrayBuffer(size);
+}
+
+export function deallocate(ptr: i32, size: i32): void{
+  // this is here for placeholder, need to get a handle on memory
+  // with AssemblyScript
+
+  return;
 }
 
 export function get_string_size(b: ArrayBuffer): i32 {
@@ -37,8 +44,8 @@ export function sum(a: i32, b: i32): i32 {
 
 export function hello(name: ArrayBuffer): ArrayBuffer {
   let inParam = String.UTF8.decode(name,true)
+  Console.log("Hello " + inParam);
 
-  console.log("writing" + inParam);
   return String.UTF8.encode("Hello " + inParam, true)
 }
 
@@ -53,4 +60,10 @@ export function callback(): ArrayBuffer {
   let inParam = call_me(String.UTF8.encode("Nic"));
 
   return inParam;
+}
+
+export function fail(): void {
+
+  raise_error(String.UTF8.encode("Oops"));
+  return;
 }

@@ -12,12 +12,12 @@ import (
 
 var plugin = flag.String("plugin", "", "Path to the Wasm module to load")
 var verbose = flag.Bool("v", false, "Verbose output")
+var log hclog.Logger
 
 func main() {
 	flag.Parse()
 
-	log := hclog.Default()
-	log = log.Named("main")
+	log = hclog.Default().Named("main")
 
 	if *verbose {
 		log.SetLevel(hclog.Debug)
@@ -94,7 +94,7 @@ func main() {
 
 func callMe(in string) string {
 	out := fmt.Sprintf("Hello %s", in)
-	fmt.Println(out)
+	log.Named("callback").Info("Callback from Go", "message", out)
 
 	return out
 }

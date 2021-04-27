@@ -7,14 +7,6 @@ func (w *Wasm) getDefaultCallbacks(i Instance, l *logger.Wrapper) *Callbacks {
 
 	cb.AddCallback(
 		"env",
-		"abort",
-		func(a, b, c, d int32) {
-			l.Debug("abort called")
-		},
-	)
-
-	cb.AddCallback(
-		"env",
 		"raise_error",
 		func(err string) {
 			l.Debug("Error raised by plugin", "error", err)
