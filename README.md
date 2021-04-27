@@ -193,7 +193,7 @@ err := e.RegisterPlugin("test", *plugin, cb, nil)
 
 ## Benchmarks:
 
-Calling functions in Wasm modules will never be as fast as native Go functions as the Wasm function is running in a virtual environment. However the intention of Wasp is that it does not replace every function in your application but allows extension points. The following benchmarks only show a simple string calculation where most of the performance is lost through executing the plugin not the speed of the code executing in the plugin. For example, if this function was called in the context of a HTTP handler that makes a database query, adding 3000 nano seconds to a call that original took 200 milliseconds would only add 0.003 milliseconds to the total response. Wasm will always be slower than native code execution however depending on the context this may be an irrelivant and all benchmarks should be taken with a pinch of salt.
+Calling functions in Wasm modules will never be as fast as native Go functions as the Wasm function is running in a virtual environment. However the intention of Wasp is that it does not replace every function in your application but allows extension points. The following benchmarks only show a simple string calculation where most of the performance is lost through executing the plugin not the speed of the code executing in the plugin. For example, if this function was called in the context of a HTTP handler that makes a database query, adding 580965 nano seconds to a call that original took 200 milliseconds would only add 0.58 milliseconds to the total response. Wasm will always be slower than native code execution and the bulk of this duration is startup to create a new instance, calling multiple functions on the same instance has a dramatically reduced overhead.  However depending on the context this may be an irrelivant and all benchmarks should be taken with a pinch of salt.
 
 ```shell
 ➜ go test -bench=. ./...
@@ -201,11 +201,10 @@ goos: linux
 goarch: amd64
 pkg: github.com/nicholasjackson/wasp/engine
 cpu: AMD Ryzen 9 3950X 16-Core Processor            
-BenchmarkSumGoWASM-32                     401122              2929 ns/op
-BenchmarkSumRustWASM-32                   397934              3044 ns/op
-BenchmarkSumTypeScriptWASM-32             340573              3045 ns/op
-BenchmarkSumCWASM-32                      389580              3043 ns/op
-BenchmarkSumNative-32                   1000000000               0.2505 ns/op
+BenchmarkIntFuncGoWASM-32                   6778                 370470 ns/op
+BenchmarkStringFuncGoWASM-32                2262                 580965 ns/op
+BenchmarkIntFuncNative-32               1000000000               0.2292 ns/op
+BenchmarkStringFuncNative-32            80865258                  14.37 ns/op
 PASS
 ok      github.com/nicholasjackson/wasp/engine  7.420s
 ?       github.com/nicholasjackson/wasp/engine/logger   [no test files]
