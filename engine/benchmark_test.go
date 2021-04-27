@@ -7,7 +7,7 @@ import (
 	"github.com/nicholasjackson/wasp/engine/logger"
 )
 
-func setupEngine(module string, b *testing.B) Instance {
+func setupEngine(module string, b *testing.B) *Wasm {
 	log := logger.New(nil, nil, nil, nil)
 	e := New(log)
 
@@ -23,29 +23,35 @@ func setupEngine(module string, b *testing.B) Instance {
 		b.Fail()
 	}
 
+	return e
+}
+
+func callIntFunction(e *Wasm, b *testing.B) {
+	var outInt int32
+
 	inst, err := e.GetInstance("test", "")
 	if err != nil {
 		b.Error(err)
-		b.Fail()
+		b.FailNow()
 	}
 
-	return inst
-}
-
-func callIntFunction(inst Instance, b *testing.B) {
-	var outInt int32
-
-	err := inst.CallFunction("int_func", &outInt, 3, 2)
+	err = inst.CallFunction("int_func", &outInt, 3, 2)
 	if err != nil {
 		b.Error(err)
 		b.Fail()
 	}
 }
 
-func callStringFunction(inst Instance, b *testing.B) {
+func callStringFunction(e *Wasm, b *testing.B) {
 	var outString string
 
-	err := inst.CallFunction("string_func", &outString, "Nic")
+	inst, err := e.GetInstance("test", "")
+	if err != nil {
+		b.Error(err)
+		b.FailNow()
+	}
+
+	err = inst.CallFunction("string_func", &outString, "Nic")
 	if err != nil {
 		b.Error(err)
 		b.FailNow()
@@ -53,18 +59,19 @@ func callStringFunction(inst Instance, b *testing.B) {
 }
 
 func BenchmarkIntFuncGoWASM(b *testing.B) {
-	i := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
+	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
 
 	for n := 0; n < b.N; n++ {
-		callIntFunction(i, b)
+		callIntFunction(e, b)
 	}
 }
 
 func BenchmarkStringFuncGoWASM(b *testing.B) {
-	i := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
+	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
 
 	for n := 0; n < b.N; n++ {
-		callStringFunction(i, b)
+
+		callStringFunction(e, b)
 	}
 }
 
