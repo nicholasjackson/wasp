@@ -16,6 +16,13 @@ type Wasm struct {
 	plugins map[string]*plugin
 }
 
+type Compiler string
+
+const (
+	CompilerSinglepass Compiler = "Singlepass"
+	CompilerCranelift  Compiler = "Cranelift"
+)
+
 /*
 	New creates a new instance of the engine, it takes a single parameter
 	logger.Wrapper that is used by the engine to log output.
@@ -23,6 +30,14 @@ type Wasm struct {
 	To create an engine with logging disabled, pass nil to the New function
 */
 func New(log *logger.Wrapper) *Wasm {
+	return NewWithCompiler(log, CompilerSinglepass)
+}
+
+// NewWithCompiler allows a new plugin engine to be created
+// using a specific compiler
+//	Singlepass: Super fast compilation times, slow execution times. Not prone to JIT-bombs
+//	Cranelift: Fast compilation times, fast execution times
+func NewWithCompiler(log *logger.Wrapper, c Compiler) *Wasm {
 	if log == nil {
 		// create a nil logger
 		log = logger.New(nil, nil, nil, nil)
@@ -30,7 +45,17 @@ func New(log *logger.Wrapper) *Wasm {
 
 	w := &Wasm{log: log}
 
-	engine := wasmer.NewEngine()
+	// Singlepass compiler is
+	config := wasmer.NewConfig()
+
+	switch c {
+	case CompilerCranelift:
+		config.UseCraneliftCompiler()
+	case CompilerSinglepass:
+		config.UseSinglepassCompiler()
+	}
+
+	engine := wasmer.NewEngineWithConfig(config)
 	w.store = wasmer.NewStore(engine)
 	w.plugins = map[string]*plugin{}
 

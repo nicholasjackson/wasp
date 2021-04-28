@@ -7,9 +7,9 @@ import (
 	"github.com/nicholasjackson/wasp/engine/logger"
 )
 
-func setupEngine(module string, b *testing.B) *Wasm {
+func setupEngine(module string, c Compiler, b *testing.B) *Wasm {
 	log := logger.New(nil, nil, nil, nil)
-	e := New(log)
+	e := NewWithCompiler(log, c)
 
 	cb := &Callbacks{}
 	cb.AddCallback("env", "call_me", callMe)
@@ -58,16 +58,33 @@ func callStringFunction(e *Wasm, b *testing.B) {
 	}
 }
 
-func BenchmarkIntFuncGoWASM(b *testing.B) {
-	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
+func BenchmarkSinglepassIntFuncGoWASM(b *testing.B) {
+	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", CompilerSinglepass, b)
 
 	for n := 0; n < b.N; n++ {
 		callIntFunction(e, b)
 	}
 }
 
-func BenchmarkStringFuncGoWASM(b *testing.B) {
-	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", b)
+func BenchmarkSinglepassStringFuncGoWASM(b *testing.B) {
+	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", CompilerSinglepass, b)
+
+	for n := 0; n < b.N; n++ {
+
+		callStringFunction(e, b)
+	}
+}
+
+func BenchmarkCraneliftIntFuncGoWASM(b *testing.B) {
+	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", CompilerCranelift, b)
+
+	for n := 0; n < b.N; n++ {
+		callIntFunction(e, b)
+	}
+}
+
+func BenchmarkCraneliftStringFuncGoWASM(b *testing.B) {
+	e := setupEngine("../_test_fixtures/go/no_imports/module.wasm", CompilerCranelift, b)
 
 	for n := 0; n < b.N; n++ {
 
