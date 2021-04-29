@@ -210,17 +210,3 @@ ok      github.com/nicholasjackson/wasp/engine  7.420s
 ?       github.com/nicholasjackson/wasp/engine/logger   [no test files]
 ?       github.com/nicholasjackson/wasp/example [no test files]
 ```
-
-## Features:
-**Done:**  
-[x] Basic plugin interface that can load and execute functions in Wasm modules  
-[x] Call Go functions from Wasm modules   
-[x] Receive and send int32, float32, and string types to the Wasm modules  
-
-**Todo:**  
-[x] Receive and send slices of bytes []byte  
-[ ] Ability to define custom ABIs for plugins, currently this is hard coded  
-[ ] Tests, lots and lots of tests  
-[x] Support Wasi standard  
-[ ] Define more robust helper packages for managing complex types  
-[ ] Check for memory leaks  
